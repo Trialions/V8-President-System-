@@ -120,9 +120,11 @@ def main():
     parser.add_argument("--top",      type=int, default=20)
     parser.add_argument("--out",      default="robustness_results/latest")
     parser.add_argument("--config",   default="config_online.yaml")
+    resolve_president_execution_mode(cfg)
     args = parser.parse_args()
 
     cfg = _load_cfg(args.config)
+    resolve_president_execution_mode(cfg)
     run_robustness(cfg, args.start, args.end, args.interval, args.top, args.out)
 
 
