@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+data/*.json
+data/*.csv
+data/cache/*
+logs/*.log
+backtest_results/*/
+walkforward_results/*/
+robustness_results/*/
+truewf_results/*/
+!**/.gitkeep

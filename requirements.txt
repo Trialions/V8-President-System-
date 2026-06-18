@@ -1,0 +1,13 @@
+# TRBOT President System V8.5 — Python bağımlılıkları
+# Kurulum: pip install -r requirements.txt  (venv içinde — bkz. 1_KURULUM.bat)
+pywebview>=5.0
+PyYAML>=6.0
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10
+requests>=2.31
+websocket-client>=1.6   # simulator.py / data_ws.py — canlı bot WebSocket akışı için ZORUNLU
+# pandas-ta TAMAMEN opsiyoneldir. Kuruluysa ADX hesaplaması onu kullanır;
+# kurulu DEĞİLSE strategy_core kendi Wilder ADX fallback'ine otomatik düşer —
+# ADX filtresi hiçbir zaman sessizce devre dışı kalmaz.
+# pandas-ta>=0.3.14b

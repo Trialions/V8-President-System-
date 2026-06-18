@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRBOT President System</title>
+<style>
+:root{
+  --bg:#0b0f17;--bg2:#0e1320;--panel:#131922;--panel2:#181f2e;--raised:#1d2436;
+  --border:#1f2d42;--border2:#2a3a52;
+  --text:#e2e8f4;--muted:#6b7a95;--dim:#404e65;
+  --accent:#4f8ef7;--green:#2ecc71;--red:#e74c3c;--yellow:#f0b429;--purple:#9b59b6;
+  --mono:ui-monospace,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;display:flex;flex-direction:column}
+
+/* ── Heartbeat bar ── */
+#hbbar{height:36px;min-height:36px;background:var(--bg2);border-bottom:1px solid var(--border);
+       display:flex;align-items:center;padding:0 16px;gap:18px;font-size:11px;font-family:var(--mono)}
+.hb{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.hbled{width:7px;height:7px;border-radius:50%;background:var(--dim)}
+.hbled.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.hbled.warn{background:var(--yellow);box-shadow:0 0 6px var(--yellow)}
+.hbled.err{background:var(--red);box-shadow:0 0 6px var(--red)}
+#hb_clock{margin-left:auto;color:var(--dim)}
+
+/* ── Shell ── */
+#shell{flex:1;display:flex;overflow:hidden}
+
+/* ── Sidebar ── */
+#sidebar{width:200px;min-width:200px;background:var(--bg2);border-right:1px solid var(--border);
+         display:flex;flex-direction:column;overflow-y:auto}
+.navg{padding:12px 0 2px}
+.navgh{font-size:10px;letter-spacing:1.2px;color:var(--dim);font-weight:700;padding:0 16px 6px;text-transform:uppercase}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--muted);
+    border-left:2px solid transparent;font-weight:500;user-select:none;font-size:12px;transition:.1s}
+.ni:hover{background:var(--panel);color:var(--text)}
+.ni.active{background:var(--panel);color:var(--text);border-left-color:var(--accent)}
+.ni .ico{width:16px;text-align:center;font-size:13px}
+.sidefoot{margin-top:auto;padding:10px 16px;border-top:1px solid var(--border);font-size:10px;color:var(--dim);font-family:var(--mono)}
+
+/* ── Main ── */
+#main{flex:1;overflow-y:auto;padding:18px 22px}
+.page{display:none}.page.active{display:block}
+.ptitle{font-size:19px;font-weight:700;margin-bottom:3px}
+.psub{color:var(--muted);font-size:11px;margin-bottom:16px}
+
+/* ── Buttons ── */
+button{font-family:var(--sans);font-size:12px;font-weight:600;border:1px solid var(--border2);
+       background:var(--panel2);color:var(--text);padding:7px 13px;border-radius:7px;cursor:pointer;transition:.12s}
+button:hover{border-color:var(--accent);background:var(--raised)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.green{background:transparent;border-color:var(--green);color:var(--green)}
+button.green:hover{background:rgba(46,204,113,.12)}
+button.red{background:transparent;border-color:var(--red);color:var(--red)}
+button.red:hover{background:rgba(231,76,60,.12)}
+button.sm{padding:4px 9px;font-size:11px;border-radius:5px}
+button.ghost{background:transparent;border-color:var(--border2);color:var(--muted)}
+
+label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600}
+input,select{font-family:var(--mono);font-size:12px;background:var(--bg);color:var(--text);
+             border:1px solid var(--border2);border-radius:6px;padding:7px 9px;width:100%}
+input:focus,select:focus{outline:none;border-color:var(--accent)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}.row>div{flex:1;min-width:80px}
+.toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+
+/* ── Cards ── */
+.card{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:15px}
+.ch{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:10px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+
+/* ── Metric cards ── */
+.mc{background:var(--panel);border:1px solid var(--border);border-radius:9px;padding:14px 16px}
+.ml{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.mv{font-size:28px;font-weight:800;font-family:var(--mono);line-height:1}
+.ms{font-size:10px;color:var(--dim);margin-top:5px}
+.pos{color:var(--green)}.neg{color:var(--red)}.neu{color:var(--text)}.warn{color:var(--yellow)}
+
+/* ── Tables ── */
+.tw{overflow:auto;border:1px solid var(--border);border-radius:8px;max-height:380px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{position:sticky;top:0;background:var(--panel2);color:var(--muted);text-align:left;
+   padding:8px 10px;font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid var(--border);font-family:var(--mono);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--panel2)}
+.pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;font-family:var(--sans)}
+.pill.long{background:rgba(46,204,113,.14);color:var(--green)}
+.pill.short{background:rgba(231,76,60,.14);color:var(--red)}
+.pill.tp,.pill.open{background:rgba(79,142,247,.14);color:var(--accent)}
+.pill.sl{background:rgba(231,76,60,.14);color:var(--red)}
+.pill.trail{background:rgba(79,142,247,.14);color:var(--accent)}
+.pill.shadow{background:rgba(155,89,182,.14);color:var(--purple)}
+.pill.block,.pill.gray{background:rgba(107,122,149,.14);color:var(--muted)}
+.pill.attack{background:rgba(231,76,60,.2);color:#ff7675}
+.pill.strong{background:rgba(253,203,110,.14);color:var(--yellow)}
+.pill.normal{background:rgba(79,142,247,.14);color:var(--accent)}
+.pill.scout{background:rgba(107,122,149,.14);color:var(--muted)}
+
+/* ── Geçmiş listesi ── */
+.hlist{display:flex;flex-direction:column;gap:8px;overflow-y:auto;max-height:calc(100vh - 220px);padding-right:3px}
+.hcard{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:11px 13px;cursor:pointer;transition:.12s}
+.hcard:hover{border-color:var(--border2);background:var(--panel2)}
+.hcard.sel{border-color:var(--accent);background:var(--panel2)}
+.hdate{font-size:11px;font-weight:700;font-family:var(--mono)}
+.htag{font-size:10px;color:var(--dim);font-weight:600;margin-left:6px;background:var(--panel2);
+      padding:1px 6px;border-radius:4px}
+.hmeta{font-size:10px;color:var(--muted);margin:4px 0 7px;font-family:var(--mono)}
+.hstats{display:flex;gap:6px;flex-wrap:wrap}
+.ms2{font-size:10px;font-weight:700;font-family:var(--mono);padding:2px 6px;border-radius:4px}
+.ms2.g{background:rgba(46,204,113,.13);color:var(--green)}
+.ms2.r{background:rgba(231,76,60,.13);color:var(--red)}
+.ms2.b{background:rgba(79,142,247,.13);color:var(--accent)}
+.newbtn{width:100%;padding:10px;margin-bottom:12px;border:1px dashed var(--border2);background:var(--panel);
+        color:var(--accent);border-radius:8px;font-weight:700}
+.newbtn:hover{border-color:var(--accent);background:var(--panel2)}
+
+/* ── Config snapshot ── */
+.snr{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px}
+.snr:last-child{border-bottom:none}
+.snr .k{color:var(--muted)}.snr .v{color:var(--accent);font-weight:600}
+
+/* ── Donut ── */
+.donutwrap{display:flex;align-items:center;gap:16px}
+.legend{display:flex;flex-direction:column;gap:6px;font-size:11px}
+.legi{display:flex;align-items:center;gap:7px;color:var(--muted);cursor:default}
+.legi:hover{color:var(--text)}
+.legsw{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+.legv{margin-left:auto;font-family:var(--mono);color:var(--text);font-weight:600;padding-left:12px}
+
+/* ── Progress bar ── */
+.progbar{height:4px;background:var(--border);border-radius:4px;overflow:hidden;margin:8px 0}
+.progfill{height:100%;background:var(--accent);border-radius:4px;transition:width .3s;width:0}
+.progwrap{display:none}.progwrap.show{display:block}
+.progmsg{font-size:11px;color:var(--muted);margin-bottom:4px}
+
+/* ── Split layout ── */
+.split{display:grid;grid-template-columns:260px 1fr;gap:18px;align-items:start}
+
+/* ── Analiz paneli (slide) ── */
+.apanel{position:fixed;top:0;right:-760px;width:760px;height:100vh;background:var(--panel);
+        border-left:1px solid var(--border2);z-index:100;transition:.3s;display:flex;flex-direction:column}
+.apanel.open{right:0}
+.apanel .aph{display:flex;align-items:center;justify-content:space-between;
+             padding:14px 18px;border-bottom:1px solid var(--border);min-height:54px}
+.apanel .aph h3{font-size:15px;font-weight:700}
+.apanel .apbody{flex:1;overflow-y:auto;padding:18px}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99}
+.overlay.show{display:block}
+
+/* ── Subtabs ── */
+.stabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap}
+.stab{padding:8px 13px;cursor:pointer;color:var(--muted);font-weight:600;border-bottom:2px solid transparent;font-size:12px}
+.stab:hover{color:var(--text)}
+.stab.active{color:var(--text);border-bottom-color:var(--accent)}
+.spane{display:none}.spane.active{display:block}
+
+/* ── Config ── */
+.cfgs{margin-bottom:10px}
+.cfgs summary{cursor:pointer;font-weight:700;padding:9px 12px;background:var(--panel);
+     border:1px solid var(--border);border-radius:7px;list-style:none;user-select:none;
+     font-size:12px;display:flex;align-items:center;gap:7px}
+.cfgs summary::before{content:"▸";color:var(--accent);font-size:10px}
+.cfgs[open] summary::before{content:"▾"}
+.cfgs[open] summary{border-radius:7px 7px 0 0}
+.cfgs .cbody{border:1px solid var(--border);border-top:none;border-radius:0 0 7px 7px;padding:6px 14px}
+.cfgrow{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--border)}
+.cfgrow:last-child{border-bottom:none}
+.cfgrow label{flex:1;margin:0;color:var(--text);font-family:var(--mono);font-size:11px;font-weight:500}
+.cfgrow .ctrl{width:150px}
+.cfggh{margin:10px 0 4px;color:var(--accent);font-weight:700;font-size:10px;font-family:var(--mono);letter-spacing:.5px}
+
+/* ── Log ── */
+.logbox{background:#060a10;border:1px solid var(--border);border-radius:8px;padding:12px;
+        font-family:var(--mono);font-size:11px;line-height:1.6;height:520px;overflow-y:auto;white-space:pre-wrap;color:var(--muted)}
+
+canvas{width:100%;display:block}
+.empty{padding:28px;text-align:center;color:var(--dim);font-size:11px}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--border2);border-top-color:var(--accent);
+      border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+.badge{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--panel2);color:var(--muted);font-family:var(--mono)}
+.cnt{background:var(--panel2);color:var(--muted);font-size:11px;padding:2px 8px;border-radius:12px;font-family:var(--mono)}
+.modalbg{display:none;position:fixed;inset:0;background:rgba(4,8,14,.75);z-index:200;align-items:center;justify-content:center}
+.modalbg.show{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border2);border-radius:12px;padding:22px;width:520px;max-width:94vw}
+.modal h3{font-size:15px;margin-bottom:3px}
+.modal .ms{color:var(--muted);font-size:11px;margin-bottom:16px}
+.modal .acts{display:flex;gap:9px;justify-content:flex-end;margin-top:18px}
+
+/* ── Tooltip ── */
+.tip{position:fixed;background:var(--raised);border:1px solid var(--border2);border-radius:7px;
+     padding:8px 12px;font-size:11px;pointer-events:none;z-index:300;display:none;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEARTBEAT BAR ═══ -->
+<div id="hbbar">
+  <div class="hb"><span class="hbled" id="hb_ws"></span><span id="hb_ws_t">WebSocket</span></div>
+  <div class="hb"><span class="hbled" id="hb_rest"></span><span id="hb_rest_t">REST API</span></div>
+  <div class="hb"><span class="hbled" id="hb_bot"></span><span id="hb_bot_t">Bot</span></div>
+  <div class="hb"><span class="hbled" id="hb_api"></span><span id="hb_api_t">GUI Bağlantı</span></div>
+  <div id="hb_clock">—</div>
+</div>
+
+<div id="shell">
+<!-- ═══ SIDEBAR ═══ -->
+<aside id="sidebar">
+  <div class="navg">
+    <div class="navgh">Canlı</div>
+    <div class="ni active" data-page="dashboard" data-title="Genel Bakış"><span class="ico">▣</span>Genel Bakış</div>
+    <div class="ni" data-page="trades" data-title="Trade"><span class="ico">↕</span>Trade</div>
+    <div class="ni" data-page="livelog" data-title="Canlı Log"><span class="ico">≋</span>Canlı Log</div>
+  </div>
+  <div class="navg">
+    <div class="navgh">Analiz</div>
+    <div class="ni" data-page="backtest" data-title="Backtest"><span class="ico">◴</span>Backtest</div>
+    <div class="ni" data-page="walkforward" data-title="Walk-Forward"><span class="ico">⇉</span>Walk-Forward</div>
+    <div class="ni" data-page="robustness" data-title="Robustluk"><span class="ico">⚖</span>Robustluk</div>
+    <div class="ni" data-page="truewf" data-title="Gerçek WF"><span class="ico">⟳</span>Gerçek WF</div>
+    <div class="ni" data-page="president" data-title="President"><span class="ico">★</span>President</div>
+    <div class="ni" data-page="ranking" data-title="Ranking / BOA"><span class="ico">⇅</span>Ranking / BOA</div>
+  </div>
+  <div class="navg">
+    <div class="navgh">Sistem</div>
+    <div class="ni" data-page="blacklist" data-title="Kara Liste"><span class="ico">⊘</span>Kara Liste</div>
+    <div class="ni" data-page="config" data-title="Config"><span class="ico">⚙</span>Config</div>
+    <div class="ni" data-page="logs" data-title="Günlükler"><span class="ico">≡</span>Günlükler</div>
+  </div>
+  <div class="sidefoot"><span id="sysVer">TRBOT v8.2</span></div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<main id="main">
+
+<!-- ─── DASHBOARD ─── -->
+<section class="page active" id="page-dashboard">
+  <div class="ptitle">Genel Bakış</div>
+  <div class="psub">Canlı portföy ve sistem durumu</div>
+  <div class="toolbar">
+    <select id="liveMode" title="Canlı veri çalışma modu">
+      <option value="paper">Paper Live — sanal pozisyon</option>
+      <option value="shadow">Shadow Live — sadece karar</option>
+    </select>
+    <button class="green" id="btnStart">▶ Başlat</button>
+    <button class="red" id="btnStop">■ Durdur</button>
+    <button class="sm ghost" id="btnRefSym">↻ Sembolleri Güncelle</button>
+    <button class="sm primary" id="btnValidate">✓ Validate</button>
+    <button class="sm ghost" id="btnAudit">◎ Decision Audit</button>
+  </div>
+  <div class="grid g4" style="margin-bottom:12px">
+    <div class="mc"><div class="ml">Net PnL</div><div class="mv" id="d_pnl">$0.00</div><div class="ms" id="d_pnlpct">0.00%</div></div>
+    <div class="mc"><div class="ml">Equity</div><div class="mv neu" id="d_eq">$0.00</div><div class="ms">canlı bakiye</div></div>
+    <div class="mc"><div class="ml">Günlük PnL</div><div class="mv" id="d_daily">$0.00</div><div class="ms">bugün</div></div>
+    <div class="mc"><div class="ml">Açık Pozisyon</div><div class="mv neu" id="d_pos">0</div><div class="ms" id="d_posub">—</div></div>
+  </div>
+  <div class="grid g3" style="margin-bottom:12px">
+    <div class="card"><div class="ch">President Risk</div><div class="mv neu" style="font-size:16px" id="d_risk">—</div></div>
+    <div class="card"><div class="ch">Evren / Shard</div><div class="mv neu" style="font-size:16px" id="d_uni">—</div></div>
+    <div class="card"><div class="ch">Son Sinyal</div><div class="mv neu" style="font-size:14px" id="d_sig">—</div></div>
+  </div>
+  <div class="grid g2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="ch">Modül Durumu</div>
+      <div class="tw" style="max-height:260px">
+        <table><thead><tr><th>Modül</th><th>Durum</th><th>Not</th></tr></thead>
+        <tbody id="module_status"><tr><td colspan="3" class="empty">Yükleniyor…</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch">Validation / Audit</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Validate config/sistem sağlığını, audit son backtest karar bütünlüğünü kontrol eder.</div>
+      <div class="logbox" id="validation_out" style="height:210px">Henüz çalıştırılmadı.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch">Açık Pozisyonlar</div>
+    <div class="tw" style="max-height:240px">
+      <table><thead><tr><th>Sembol</th><th>Yön</th><th>Giriş</th><th>Yaş (dk)</th><th>Değişim</th><th>Label</th></tr></thead>
+      <tbody id="d_postbl"><tr><td colspan="6" class="empty">Pozisyon yok</td></tr></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TRADE ─── -->
+<section class="page" id="page-trades">
+  <div class="ptitle">Trade</div>
+  <div class="psub">Canlı motordaki açık ve son kapalı pozisyonlar</div>
+  <div class="grid g2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="ch">Açık Pozisyonlar</div>
+      <div class="tw">
+        <table><thead><tr><th>Sembol</th><th>Yön</th><th>Giriş Fiyatı</th><th>Yaş</th><th>Değişim %</th><th>Label</th></tr></thead>
+        <tbody id="t_open"><tr><td colspan="6" class="empty">Yok</td></tr></tbody></table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch">President Risk Durumu</div>
+      <div id="t_risk_grid" class="grid g2"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch">Son İşlemler (canlı motordan)</div>
+    <div class="tw">
+      <table><thead><tr><th>Sembol</th><th>Yön</th><th>Giriş</th><th>Çıkış</th><th>Giriş $</th><th>Çıkış $</th><th>Net PnL</th><th>Sebep</th></tr></thead>
+      <tbody id="t_closed"><tr><td colspan="8" class="empty">Veri yok</td></tr></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- ─── LIVE LOG ─── -->
+<section class="page" id="page-livelog">
+  <div class="ptitle">Canlı Log</div>
+  <div class="logbox" id="liveLog"></div>
+</section>
+
+<!-- ─── BACKTEST ─── -->
+<section class="page" id="page-backtest">
+  <div class="split">
+    <div>
+      <button class="newbtn" onclick="openModal('bt')">+ Yeni Backtest</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:10px;color:var(--dim);letter-spacing:1px;font-weight:700;text-transform:uppercase">GEÇMİŞ TESTLER</span>
+        <span class="cnt" id="bt_cnt">0</span>
+      </div>
+      <div class="hlist" id="bt_hist"><div class="empty">Yükleniyor…</div></div>
+    </div>
+    <div>
+      <div class="progwrap" id="bt_prog">
+        <div class="progmsg" id="bt_progmsg">Çalışıyor…</div>
+        <div class="progbar"><div class="progfill" id="bt_progfill"></div></div>
+      </div>
+      <div class="empty" id="bt_ph" style="padding:70px 20px">
+        Soldan test seç veya <b>+ Yeni Backtest</b> başlat.
+      </div>
+      <div id="bt_res" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div><div class="ptitle" id="bt_rtitle" style="font-size:16px">—</div>
+               <div style="font-size:11px;color:var(--muted)" id="bt_rmeta"></div></div>
+          <div style="display:flex;gap:8px">
+            <button class="sm ghost" id="bt_folder_btn" title="Klasörü aç">📁</button>
+            <button class="sm red" id="bt_del_btn">Sil</button>
+            <button class="sm primary" onclick="openAnalysis('bt')">◁▷ Analiz Aç</button>
+          </div>
+        </div>
+        <div class="grid g4" id="bt_metrics" style="margin-bottom:12px"></div>
+        <div class="grid g2" style="margin-bottom:12px">
+          <div class="card"><div class="ch">Config Snapshot</div><div id="bt_snap"></div></div>
+          <div class="card">
+            <div class="ch">Kapanış Nedenleri</div>
+            <div class="donutwrap">
+              <canvas id="bt_donut" width="150" height="150" style="width:150px;height:150px"></canvas>
+              <div class="legend" id="bt_legend"></div>
+            </div>
+          </div>
+        </div>
+        <div class="card"><div class="ch">Equity Eğrisi</div><canvas id="bt_chart" height="175"></canvas></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── WF ─── -->
+<section class="page" id="page-walkforward">
+  <div class="split">
+    <div>
+      <button class="newbtn" onclick="openModal('wf')">+ Yeni Walk-Forward</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:10px;color:var(--dim);letter-spacing:1px;font-weight:700;text-transform:uppercase">GEÇMİŞ KOŞULAR</span>
+        <span class="cnt" id="wf_cnt">0</span>
+      </div>
+      <div class="hlist" id="wf_hist"><div class="empty">Yükleniyor…</div></div>
+    </div>
+    <div>
+      <div class="progwrap" id="wf_prog"><div class="progmsg" id="wf_progmsg">Çalışıyor…</div>
+        <div class="progbar"><div class="progfill" id="wf_progfill"></div></div></div>
+      <div class="empty" id="wf_ph" style="padding:70px 20px">Soldan koşu seç.</div>
+      <div id="wf_res" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div><div class="ptitle" id="wf_rtitle" style="font-size:16px">—</div>
+               <div style="font-size:11px;color:var(--muted)">Aylık bağımsız segmentler</div></div>
+          <div style="gap:8px;display:flex"><button class="sm red" id="wf_del">Sil</button>
+            <button class="sm primary" onclick="openAnalysis('wf')">◁▷ Analiz</button></div>
+        </div>
+        <div class="grid g3" id="wf_metrics" style="margin-bottom:12px"></div>
+        <div class="card" style="margin-bottom:12px"><div class="ch">Aylık PnL</div><canvas id="wf_chart" height="160"></canvas></div>
+        <div class="card"><div class="ch">Aylık Detay</div><div class="tw" id="wf_tbl"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── ROBUSTNESS ─── -->
+<section class="page" id="page-robustness">
+  <div class="split">
+    <div>
+      <button class="newbtn" onclick="openModal('rob')">+ Yeni Robustluk</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:10px;color:var(--dim);letter-spacing:1px;font-weight:700;text-transform:uppercase">GEÇMİŞ KOŞULAR</span>
+        <span class="cnt" id="rob_cnt">0</span>
+      </div>
+      <div class="hlist" id="rob_hist"><div class="empty">Yükleniyor…</div></div>
+    </div>
+    <div>
+      <div class="progwrap" id="rob_prog"><div class="progmsg" id="rob_progmsg">Çalışıyor…</div>
+        <div class="progbar"><div class="progfill" id="rob_progfill"></div></div></div>
+      <div class="empty" id="rob_ph" style="padding:70px 20px">Soldan koşu seç.</div>
+      <div id="rob_res" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div><div class="ptitle" id="rob_rtitle" style="font-size:16px">—</div>
+               <div style="font-size:11px;color:var(--muted)">Haftalık sembol rotasyonu</div></div>
+          <div style="gap:8px;display:flex"><button class="sm red" id="rob_del">Sil</button>
+            <button class="sm primary" onclick="openAnalysis('rob')">◁▷ Analiz</button></div>
+        </div>
+        <div class="grid g3" id="rob_metrics" style="margin-bottom:12px"></div>
+        <div class="card" style="margin-bottom:12px"><div class="ch">Haftalık PnL</div><canvas id="rob_chart" height="160"></canvas></div>
+        <div class="card"><div class="ch">Haftalık Detay</div><div class="tw" id="rob_tbl"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── TRUE WF ─── -->
+<section class="page" id="page-truewf">
+  <div class="split">
+    <div>
+      <button class="newbtn" onclick="openModal('twf')">+ Yeni Gerçek WF</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-size:10px;color:var(--dim);letter-spacing:1px;font-weight:700;text-transform:uppercase">GEÇMİŞ KOŞULAR</span>
+        <span class="cnt" id="twf_cnt">0</span>
+      </div>
+      <div class="hlist" id="twf_hist"><div class="empty">Yükleniyor…</div></div>
+    </div>
+    <div>
+      <div class="progwrap" id="twf_prog"><div class="progmsg">Çalışıyor…</div>
+        <div class="progbar"><div class="progfill" id="twf_progfill"></div></div></div>
+      <div class="empty" id="twf_ph" style="padding:70px 20px">
+        Train→optimize→test→roll OOS testi.<br>Soldan koşu seç veya başlat.
+      </div>
+      <div id="twf_res" style="display:none">
+        <div class="ptitle" id="twf_rtitle" style="font-size:16px;margin-bottom:14px">—</div>
+        <div class="grid g4" id="twf_metrics" style="margin-bottom:12px"></div>
+        <div class="card" style="margin-bottom:12px"><div class="ch">Fold OOS PnL</div><canvas id="twf_chart" height="160"></canvas></div>
+        <div class="card"><div class="ch">Fold Detayı</div><div class="tw" id="twf_tbl"></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─── PRESIDENT ─── -->
+<section class="page" id="page-president">
+  <div class="ptitle">President Kararları</div>
+  <div class="psub">Dal oyları, shadow log ve risk durumu</div>
+  <div class="toolbar"><button class="sm ghost" onclick="loadPresident()">↻ Yenile</button></div>
+  <div class="grid g4" id="pres_risk" style="margin-bottom:14px"></div>
+  <div class="stabs">
+    <div class="stab active" data-sub="pres-dec">Kararlar</div>
+    <div class="stab" data-sub="pres-shadow">Shadow Fırsatlar</div>
+    <div class="stab" data-sub="pres-votes">Dal Oyları</div>
+  </div>
+  <div class="spane active" id="pres-dec"><div class="tw" id="pres_dec_w"></div></div>
+  <div class="spane" id="pres-shadow">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Emir açılmadan kaydedilen shadow kararlar. Performans ölçmek için "Canlı" modda backtest çalıştırın.</div>
+    <div class="tw" id="pres_shadow_w"></div>
+  </div>
+  <div class="spane" id="pres-votes">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Her dalın son oyları. Shadow=1 → dala henüz güvenilmiyor.</div>
+    <div class="tw" id="pres_votes_w"></div>
+  </div>
+</section>
+
+
+<!-- ─── RANKING / BOA FEEDBACK ─── -->
+<section class="page" id="page-ranking">
+  <div class="ptitle">Ranking / BOA Feedback</div>
+  <div class="psub">V8.5.5 aynı-mum aday sıralama, RANK_REJECTED sebepleri ve BOA feedback hafızası</div>
+  <div class="toolbar">
+    <input id="rankFolder" placeholder="Boş bırak: son backtest" style="min-width:260px">
+    <button class="sm primary" onclick="loadRankingBoa()">↻ Yenile</button>
+    <button class="sm ghost" onclick="rankRunAudit()">◎ Audit Çalıştır</button>
+  </div>
+  <div class="grid g4" id="rank_metrics" style="margin-bottom:12px"></div>
+  <div class="grid g2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="ch">Rank Rejection Özeti</div>
+      <div class="tw" id="rank_reason_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
+    </div>
+    <div class="card">
+      <div class="ch">Son Ranking Candle Adayları</div>
+      <div class="tw" id="rank_latest_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
+    </div>
+  </div>
+  <div class="grid g2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="ch">BOA Feedback — Pozitif Edge</div>
+      <div class="tw" id="boa_pos_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
+    </div>
+    <div class="card">
+      <div class="ch">BOA Feedback — Negatif Edge</div>
+      <div class="tw" id="boa_neg_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch">Audit / Not</div>
+    <div class="logbox" id="rank_audit_out" style="height:190px">Bu panel Claude'un core ranking/BOA kodunu değiştirmez; sadece üretilen CSV/JSON çıktıları okur ve denetlenebilir hale getirir.</div>
+  </div>
+</section>
+
+<!-- ─── BLACKLIST ─── -->
+<section class="page" id="page-blacklist">
+  <div class="ptitle">Kara Liste</div>
+  <div class="psub">Süreli sembol banı</div>
+  <div class="card" style="max-width:580px">
+    <div class="row" style="margin-bottom:12px">
+      <div style="flex:2"><label>Sembol</label><input id="blSym" placeholder="NEARUSDT"></div>
+      <div><label>Saat</label><input id="blH" type="number" value="24"></div>
+      <div style="flex:0"><label>&nbsp;</label><button onclick="blAdd()">Ekle</button></div>
+    </div>
+    <div class="tw"><table><thead><tr><th>Sembol</th><th>Kalan (sa)</th><th></th></tr></thead>
+    <tbody id="blTbl"><tr><td colspan="3" class="empty">Boş</td></tr></tbody></table></div>
+  </div>
+</section>
+
+<!-- ─── CONFIG ─── -->
+<section class="page" id="page-config">
+  <div class="ptitle">Yapılandırma</div>
+  <div class="psub">config_online.yaml — bölümlenmiş editör</div>
+  <div class="toolbar">
+    <button class="primary" onclick="cfgSave()">💾 Kaydet</button>
+    <button class="ghost sm" onclick="loadConfig()">↻ Yenile</button>
+    <span class="badge" id="cfg_st">—</span>
+  </div>
+  <div id="cfg_secs"><div class="empty">Yükleniyor…</div></div>
+</section>
+
+<!-- ─── LOGS ─── -->
+<section class="page" id="page-logs">
+  <div class="ptitle">Günlükler</div>
+  <div class="toolbar">
+    <button class="ghost sm" onclick="$('sysLog').innerHTML=''">Temizle</button>
+    <span class="badge" id="logcnt">0 satır</span>
+  </div>
+  <div class="logbox" id="sysLog"></div>
+</section>
+
+</main>
+</div><!-- shell -->
+
+<!-- ═══ ANALİZ PANELI (yana açılır) ═══ -->
+<div class="overlay" id="overlay" onclick="closeAnalysis()"></div>
+<div class="apanel" id="apanel">
+  <div class="aph">
+    <div>
+      <h3 id="ap_title">Analiz</h3>
+      <div style="font-size:11px;color:var(--muted)" id="ap_meta"></div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="sm ghost" id="ap_folder">📁 Klasör</button>
+      <button class="sm red" id="ap_del">🗑 Sil</button>
+      <button class="ghost sm" onclick="closeAnalysis()">✕ Kapat</button>
+    </div>
+  </div>
+  <div class="apbody">
+    <div class="stabs" id="ap_tabs">
+      <div class="stab active" data-sub="ap-ozet">Özet</div>
+      <div class="stab" data-sub="ap-islem">İşlem Detayları</div>
+      <div class="stab" data-sub="ap-boa">BOA</div>
+      <div class="stab" data-sub="ap-filtre">Filtre Olayları</div>
+      <div class="stab" data-sub="ap-ranking">Ranking</div>
+      <div class="stab" data-sub="ap-president">President Tepkisi</div>
+      <div class="stab" data-sub="ap-ghost">Ghost</div>
+    </div>
+    <div class="spane active" id="ap-ozet">
+      <div class="grid g2" id="ap_ozet_metrics" style="margin-bottom:12px"></div>
+      <div class="grid g2" style="margin-bottom:12px">
+        <div class="card"><div class="ch">Config Snapshot</div><div id="ap_snap"></div></div>
+        <div class="card">
+          <div class="ch">Kapanış Nedenleri</div>
+          <div class="donutwrap">
+            <canvas id="ap_donut" width="140" height="140" style="width:140px;height:140px;cursor:pointer"></canvas>
+            <div class="legend" id="ap_legend"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card"><div class="ch">Equity Eğrisi</div><canvas id="ap_chart" height="170"></canvas></div>
+    </div>
+    <div class="spane" id="ap-islem">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Net_PnL = Final_PnL + TP1_PnL − Giriş_Komisyon. Her komisyon ayrı kolonlarda gösterilir.</div>
+      <div class="tw" id="ap_trades_w" style="max-height:500px"></div>
+    </div>
+    <div class="spane" id="ap-boa">
+      <div class="stabs">
+        <div class="stab active" data-sub="boa-exit">Çıkış Özeti</div>
+        <div class="stab" data-sub="boa-reason">Filtre→24h Sebep</div>
+        <div class="stab" data-sub="boa-symbol">Filtre→24h Sembol</div>
+        <div class="stab" data-sub="boa-regime">Filtre→24h Rejim</div>
+      </div>
+      <div class="spane active" id="boa-exit"><div class="tw" id="ap_boa_w"></div></div>
+      <div class="spane" id="boa-reason">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px"><b>Gereksiz Engel</b>: filtre blokladı, fiyat kazandı. <b>Doğru Engel</b>: filtre korudu.</div>
+        <div class="tw" id="ap_boa_reason_w"></div>
+      </div>
+      <div class="spane" id="boa-symbol"><div class="tw" id="ap_boa_sym_w"></div></div>
+      <div class="spane" id="boa-regime"><div class="tw" id="ap_boa_reg_w"></div></div>
+    </div>
+    <div class="spane" id="ap-filtre"><div class="tw" id="ap_filtre_w" style="max-height:500px"></div></div>
+    <div class="spane" id="ap-ranking">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Aynı candle içinde seçilen ve reddedilen adaylar. RANK_SELECTED açılanları, RANK_REJECTED_* seçilmeyenleri gösterir.</div>
+      <div class="grid g2" style="margin-bottom:12px">
+        <div class="card"><div class="ch">Ranking Özeti</div><div class="tw" id="ap_rank_reason_w"></div></div>
+        <div class="card"><div class="ch">Son Ranking Candle</div><div class="tw" id="ap_rank_latest_w"></div></div>
+      </div>
+    </div>
+    <div class="spane" id="ap-president">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Bu test sırasında President'ın verdiği kararlar (sadece bu koşu). Candle zamanı kullanılır.</div>
+      <div class="stabs">
+        <div class="stab active" data-sub="pres-d2">Kararlar</div>
+        <div class="stab" data-sub="pres-v2">Dal Oyları</div>
+      </div>
+      <div class="spane active" id="pres-d2"><div class="tw" id="ap_pres_dec_w"></div></div>
+      <div class="spane" id="pres-v2"><div class="tw" id="ap_pres_votes_w"></div></div>
+    </div>
+    <div class="spane" id="ap-ghost"><div class="tw" id="ap_ghost_w" style="max-height:500px"></div></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ═══ -->
+<div class="modalbg" id="modalbg">
+  <div class="modal">
+    <h3 id="m_title">Yeni Test</h3>
+    <div class="ms" id="m_sub"></div>
+    <div class="row" style="margin-bottom:10px">
+      <div><label>Başlangıç</label><input id="m_s" type="date"></div>
+      <div><label>Bitiş</label><input id="m_e" type="date"></div>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <div id="m_days_wrap"><label>Veya Gün</label><input id="m_days" type="number" value="30"></div>
+      <div><label>Interval</label><select id="m_int"><option>1h</option><option>15m</option><option>4h</option></select></div>
+      <div><label>Top Sembol</label><input id="m_top" type="number" value="20"></div>
+    </div>
+    <div class="row" id="m_pmode_row" style="margin-bottom:10px">
+      <div><label>President Modu</label>
+        <select id="m_pmode">
+          <option value="">Config'e göre</option>
+          <option value="live">Canlı (performans ölç)</option>
+          <option value="shadow">Shadow (veri topla)</option>
+          <option value="legacy">Legacy (A/B karşılaştır)</option>
+        </select>
+      </div>
+    </div>
+    <div class="acts">
+      <button class="ghost" onclick="closeModal()">İptal</button>
+      <button class="primary" id="m_run">Çalıştır</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOOLTIP ═══ -->
+<div class="tip" id="tip"></div>
+
+<script>
+// ════════════════ API ════════════════
+let API=null;
+async function call(m,...a){
+  if(!API||typeof API[m]!=='function') return null;
+  try{return await API[m](...a);}catch(e){console.error('API',m,e);return null;}
+}
+window.addEventListener('pywebviewready',initAPI);
+function initAPI(){
+  API=(window.pywebview&&window.pywebview.api)?window.pywebview.api:null;
+  if(API){setHB('api',true,'GUI bağlı');boot();}
+}
+setTimeout(()=>{if(!API&&window.pywebview&&window.pywebview.api)initAPI();},1400);
+
+// ════════════════ Yardımcılar ════════════════
+const $=id=>document.getElementById(id);
+function cls(v){v=parseFloat(v);return isNaN(v)?'neu':(v>0?'pos':(v<0?'neg':'neu'));}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function money(v){v=parseFloat(v)||0;return(v>=0?'$':'-$')+Math.abs(v).toFixed(2);}
+
+function tbl(rows,cols){
+  if(!rows||!rows.length) return '<div class="empty">Veri yok</div>';
+  if(!cols) cols=Object.keys(rows[0]);
+  let h='<table><thead><tr>'+cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>';
+  for(const r of rows){
+    h+='<tr>'+cols.map(c=>{
+      let v=r[c],cl='';
+      if(/net_pnl|final_pnl|tp1_pnl|toplamPnL|OrtPnL/i.test(c)) cl=cls(v);
+      const lc=String(c).toLowerCase();
+      if(lc==='yon'||lc==='side'){const u=String(v).toUpperCase();
+        return '<td><span class="pill '+(u==='LONG'?'long':u==='SHORT'?'short':'gray')+'">'+esc(v)+'</span></td>';}
+      if(lc==='sebep'||lc==='neden'){const m={'TP':'tp','SL':'sl','Trail':'trail','MaxHold':'gray','EndOfTest':'gray',
+        'ScoreClose':'shadow','ForceClose':'gray','TP1':'tp'}[v]||'gray';
+        return '<td><span class="pill '+m+'">'+esc(v)+'</span></td>';}
+      if(lc==='action'){const a=String(v).toUpperCase(),m={'OPEN':'tp','SHADOW':'shadow','BLOCK':'gray','WATCH':'gray'}[a]||'gray';
+        return '<td><span class="pill '+m+'">'+esc(v)+'</span></td>';}
+      if(lc==='label'){const m={'ATTACK':'attack','STRONG':'strong','NORMAL':'normal','SCOUT':'scout'}[v]||'gray';
+        if(v) return '<td><span class="pill '+m+'">'+esc(v)+'</span></td>';}
+      return '<td class="'+cl+'">'+esc(v)+'</td>';
+    }).join('')+'</tr>';
+  }
+  return h+'</tbody></table>';
+}
+
+function drawLine(canvas,pts,opts){
+  opts=opts||{}; if(!canvas) return;
+  const dpr=window.devicePixelRatio||1,w=canvas.clientWidth,h=opts.h||175;
+  canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+  if(!pts||pts.length<2){ctx.fillStyle='#404e65';ctx.font='11px monospace';ctx.fillText('Veri yok',10,18);return;}
+  const ys=pts.map(p=>p.v);let mn=Math.min(...ys),mx=Math.max(...ys);if(mn===mx){mn-=1;mx+=1;}
+  const pad=36,pw=w-pad-8,ph=h-24;
+  const X=i=>pad+(i/(pts.length-1))*pw,Y=v=>8+ph-((v-mn)/(mx-mn))*ph;
+  ctx.strokeStyle='#1f2d42';ctx.lineWidth=1;
+  for(let g=0;g<=4;g++){const gy=8+ph*g/4;ctx.beginPath();ctx.moveTo(pad,gy);ctx.lineTo(w-8,gy);ctx.stroke();
+    ctx.fillStyle='#404e65';ctx.font='9px monospace';ctx.fillText((mx-(mx-mn)*g/4).toFixed(0),2,gy+3);}
+  const base=pts[0].v,last=pts[pts.length-1].v,up=last>=base;
+  ctx.beginPath();pts.forEach((p,i)=>{i?ctx.lineTo(X(i),Y(p.v)):ctx.moveTo(X(i),Y(p.v));});
+  ctx.strokeStyle=up?'#2ecc71':'#e74c3c';ctx.lineWidth=2;ctx.stroke();
+  ctx.lineTo(X(pts.length-1),8+ph);ctx.lineTo(X(0),8+ph);ctx.closePath();
+  ctx.fillStyle=up?'rgba(46,204,113,.07)':'rgba(231,76,60,.07)';ctx.fill();
+}
+
+function drawBars(canvas,labels,values,opts){
+  opts=opts||{}; if(!canvas) return;
+  const dpr=window.devicePixelRatio||1,w=canvas.clientWidth,h=opts.h||160;
+  canvas.width=w*dpr;canvas.height=h*dpr;const ctx=canvas.getContext('2d');ctx.scale(dpr,dpr);ctx.clearRect(0,0,w,h);
+  if(!values||!values.length){ctx.fillStyle='#404e65';ctx.font='11px monospace';ctx.fillText('Veri yok',10,18);return;}
+  const mx=Math.max(1,...values.map(Math.abs)),pad=36,ph=h-28,zeroY=8+ph/2;
+  const gap=(w-pad-10)/values.length,bw=gap*0.6;
+  ctx.strokeStyle='#2a3a52';ctx.beginPath();ctx.moveTo(pad,zeroY);ctx.lineTo(w-10,zeroY);ctx.stroke();
+  values.forEach((v,i)=>{const bh=(Math.abs(v)/mx)*(ph/2),bx=pad+gap*i+(gap-bw)/2;
+    ctx.fillStyle=v>=0?'#2ecc71':'#e74c3c';
+    if(v>=0)ctx.fillRect(bx,zeroY-bh,bw,bh);else ctx.fillRect(bx,zeroY,bw,bh);
+    ctx.fillStyle='#404e65';ctx.font='8px monospace';ctx.save();
+    ctx.translate(bx+bw/2,h-3);ctx.rotate(-Math.PI/6);ctx.fillText(labels[i]||'',0,0);ctx.restore();});
+}
+
+const DCOLS={TP:'#2ecc71',SL:'#e74c3c',Trail:'#4f8ef7',MaxHold:'#f0b429',
+             ScoreClose:'#9b59b6',EndOfTest:'#404e65',ForceClose:'#404e65',TP1:'#2dd4bf'};
+let _tipEl=null;
+function drawDonut(canvas,legEl,data,opts){
+  opts=opts||{}; const ctx=canvas.getContext('2d');
+  const sz=opts.sz||140,dpr=window.devicePixelRatio||1;
+  canvas.width=sz*dpr;canvas.height=sz*dpr;ctx.scale(dpr,dpr);ctx.clearRect(0,0,sz,sz);
+  const ents=Object.entries(data).filter(([,v])=>v>0);
+  const total=ents.reduce((a,[,v])=>a+v,0);
+  if(!total){legEl.innerHTML='';return;}
+  let ang=-Math.PI/2;const cx=sz/2,cy=sz/2,rO=sz*0.46,rI=sz*0.28;
+  ents.forEach(([k,v])=>{const a2=ang+(v/total)*Math.PI*2;
+    ctx.beginPath();ctx.arc(cx,cy,rO,ang,a2);ctx.arc(cx,cy,rI,a2,ang,true);ctx.closePath();
+    ctx.fillStyle=DCOLS[k]||'#6b7a95';ctx.fill();ang=a2;});
+  // hover
+  canvas.onmousemove=e=>{
+    const r=canvas.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+    const dx=x-cx,dy=y-cy,dist=Math.sqrt(dx*dx+dy*dy);
+    const tip=$('tip'); if(!tip) return;
+    if(dist>rI&&dist<rO){
+      let ang2=-Math.PI/2; let found=null;
+      for(const [k,v] of ents){const a2=ang2+(v/total)*Math.PI*2;
+        let a=Math.atan2(dy,dx); if(a<ang2&&a<-Math.PI/2)a+=Math.PI*2;
+        if(a>=ang2&&a<=a2){found={k,v,pct:(v/total*100).toFixed(1)};break;} ang2=a2;}
+      if(found){tip.style.display='block';tip.style.left=e.clientX+12+'px';tip.style.top=e.clientY-8+'px';
+        tip.innerHTML='<b>'+esc(found.k)+'</b>: '+found.v+' işlem ('+found.pct+'%)';}
+    } else tip.style.display='none';
+  };
+  canvas.onmouseleave=()=>{ const t=$('tip'); if(t) t.style.display='none'; };
+  legEl.innerHTML=ents.map(([k,v])=>'<div class="legi"><span class="legsw" style="background:'+(DCOLS[k]||'#6b7a95')+'"></span>'+
+    esc(k)+'<span class="legv">'+v+'</span></div>').join('');
+}
+
+function metric(elId,val,c){const e=$(elId);if(!e)return;e.textContent=val;e.className='mv '+(c||'neu');}
+function metricCard(label,val,c,sub){
+  return '<div class="mc"><div class="ml">'+esc(label)+'</div><div class="mv '+(c||'neu')+'">'+esc(val)+'</div>'+(sub?'<div class="ms">'+esc(sub)+'</div>':'')+'</div>';}
+
+// ════════════════ Heartbeat ════════════════
+function setHB(id,ok,txt){
+  const d=$(id==='api'?'hb_api':`hb_${id}`),t=$(id==='api'?'hb_api_t':`hb_${id}_t`);
+  if(d){d.className='hbled '+(ok?'ok':'err');}
+  if(t&&txt){t.textContent=txt;}
+}
+function tickClock(){$('hb_clock').textContent=new Date().toLocaleString('tr-TR',{hour12:false});}
+
+// ════════════════ Navigation ════════════════
+document.querySelectorAll('.ni').forEach(it=>{
+  it.addEventListener('click',()=>{
+    document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    it.classList.add('active');
+    $('page-'+it.dataset.page).classList.add('active');
+    onPage(it.dataset.page);
+  });
+});
+
+function bindStabs(container){
+  (container||document).querySelectorAll('.stab').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const g=t.parentElement;
+      g.querySelectorAll('.stab').forEach(x=>x.classList.remove('active'));t.classList.add('active');
+      const cont=g.parentElement;
+      cont.querySelectorAll(':scope > .spane').forEach(p=>p.classList.remove('active'));
+      const pane=cont.querySelector(':scope > #'+CSS.escape(t.dataset.sub));if(pane)pane.classList.add('active');
+    });
+  });
+}
+
+function onPage(pg){
+  if(pg==='dashboard') loadDashboard();
+  if(pg==='trades') loadTrades();
+  if(pg==='backtest') loadBtHist();
+  if(pg==='walkforward') loadWfHist();
+  if(pg==='robustness') loadRobHist();
+  if(pg==='truewf') loadTwfHist();
+  if(pg==='president') loadPresident();
+  if(pg==='ranking') loadRankingBoa();
+  if(pg==='config') loadConfig();
+  if(pg==='blacklist') loadBL();
+}
+
+// ════════════════ Dashboard ════════════════
+async function loadDashboard(){
+  const st=await call('get_state');
+  if(st){
+    metric('d_pnl',money(st.pnl_usd),cls(st.pnl_usd));$('d_pnlpct').textContent=(st.pnl_pct||0).toFixed(2)+'%';
+    $('d_eq').textContent=money(st.equity);
+    metric('d_daily',money(st.daily),cls(st.daily));
+    $('d_uni').textContent=(st.universe||0)+' / '+(st.shards||0);
+  }
+  const pos=await call('get_positions');
+  if(pos){
+    $('d_pos').textContent=pos.length;
+    $('d_postbl').innerHTML=pos.length?pos.map(p=>
+      '<tr><td>'+esc(p.symbol)+'</td><td><span class="pill '+(p.side==='LONG'?'long':'short')+'">'+esc(p.side)+'</span></td>'+
+      '<td>'+esc(p.entry)+'</td><td>'+esc(p.age_min)+'</td>'+
+      '<td class="'+(p.change_pct>=0?'pos':'neg')+'">'+esc((p.change_pct||0).toFixed(2))+'%</td>'+
+      '<td><span class="pill '+String(p.label||'').toLowerCase()+'">'+esc(p.label||'—')+'</span></td></tr>').join('')
+      :'<tr><td colspan="6" class="empty">Pozisyon yok</td></tr>';
+  }
+  const pr=await call('get_president_state');
+  if(pr&&pr.ok&&pr.risk){const r=pr.risk;
+    $('d_risk').textContent='L:'+(r.open_longs||0)+' S:'+(r.open_shorts||0);
+    $('d_posub').textContent='Günlük: '+money(r.daily_pnl);}
+}
+
+// ════════════════ Trades ════════════════
+async function loadTrades(){
+  const pos=await call('get_positions');
+  $('t_open').innerHTML=pos&&pos.length?pos.map(p=>
+    '<tr><td>'+esc(p.symbol)+'</td><td><span class="pill '+(p.side==='LONG'?'long':'short')+'">'+esc(p.side)+'</span></td>'+
+    '<td>'+esc(p.entry)+'</td><td>'+esc(p.age_min)+'dk</td>'+
+    '<td class="'+(p.change_pct>=0?'pos':'neg')+'">'+esc((p.change_pct||0).toFixed(2))+'%</td>'+
+    '<td><span class="pill '+String(p.label||'').toLowerCase()+'">'+esc(p.label||'—')+'</span></td></tr>').join('')
+    :'<tr><td colspan="6" class="empty">Yok</td></tr>';
+  const pr=await call('get_president_state');
+  if(pr&&pr.ok&&pr.risk){const r=pr.risk;
+    $('t_risk_grid').innerHTML=[['Açık Long',r.open_longs||0,''],['Açık Short',r.open_shorts||0,''],
+      ['Günlük PnL',money(r.daily_pnl),cls(r.daily_pnl)],['Aylık PnL',money(r.monthly_pnl),cls(r.monthly_pnl)]
+    ].map(([l,v,c])=>metricCard(l,v,c)).join('');}
+}
+
+// ════════════════ Blacklist ════════════════
+async function blAdd(){const s=$('blSym').value.trim();if(!s)return;
+  await call('blacklist_add',s,parseFloat($('blH').value)||24);$('blSym').value='';loadBL();}
+async function loadBL(){const bl=await call('get_blacklist');
+  $('blTbl').innerHTML=bl&&bl.length?bl.map(it=>{const sym=Array.isArray(it)?it[0]:(it.symbol||it),hrs=Array.isArray(it)?it[1]:(it.hours||'');
+    return '<tr><td>'+esc(sym)+'</td><td>'+esc(hrs)+'</td><td><button class="sm red" onclick="blRm(\''+esc(sym)+'\')">Çıkar</button></td></tr>';}).join('')
+    :'<tr><td colspan="3" class="empty">Boş</td></tr>';}
+async function blRm(s){await call('blacklist_remove',s);loadBL();}
+
+// ════════════════ Modal ════════════════
+let MODAL_MODE='bt';
+function openModal(mode){
+  MODAL_MODE=mode;
+  const CFG={
+    bt:['Yeni Backtest','Tek dönem simülasyon',true,true],
+    wf:['Yeni Walk-Forward','Aylık bağımsız segmentler — tarih zorunlu',false,true],
+    rob:['Yeni Robustluk','Haftalık sembol rotasyonu — tarih zorunlu',false,true],
+    twf:['Yeni Gerçek WF','Train→optimize→test→roll OOS — tarih zorunlu',false,false],
+  }[mode]||['Yeni Test','',false,true];
+  $('m_title').textContent=CFG[0];$('m_sub').textContent=CFG[1];
+  $('m_days_wrap').style.display=CFG[2]?'block':'none';
+  $('m_pmode_row').style.display=CFG[3]?'flex':'none';
+  $('modalbg').classList.add('show');
+}
+function closeModal(){$('modalbg').classList.remove('show');}
+$('modalbg').addEventListener('click',e=>{if(e.target===$('modalbg'))closeModal();});
+$('m_run').onclick=async()=>{
+  const p={start:$('m_s').value,end:$('m_e').value,interval:$('m_int').value,top:parseInt($('m_top').value)||20};
+  const pm=$('m_pmode').value; if(pm) p.president_mode=pm;
+  if(MODAL_MODE==='bt'){p.days=parseInt($('m_days').value)||30;const r=await call('start_backtest',p);
+    closeModal();if(r&&r.ok)pollTest('bt',r.dir);}
+  else if(MODAL_MODE==='wf'){if(!p.start||!p.end){alert('Tarih gerekli');return;}
+    const r=await call('start_walkforward',p);closeModal();if(r&&r.ok)pollTest('wf',r.dir);}
+  else if(MODAL_MODE==='rob'){if(!p.start||!p.end){alert('Tarih gerekli');return;}
+    const r=await call('start_robustness',p);closeModal();if(r&&r.ok)pollTest('rob',r.dir);}
+  else{if(!p.start||!p.end){alert('Tarih gerekli');return;}
+    p.train_days=60;p.test_days=30;p.roll_days=30;
+    const r=await call('start_true_walkforward',p);closeModal();if(r&&r.ok)pollTest('twf',r.dir);}
+};
+
+// ════════════════ Progress polling ════════════════
+const TIMERS={};
+const STATUS_FNS={bt:'get_backtest_status',wf:'get_wf_status',rob:'get_rob_status',twf:'get_true_wf_status'};
+let _pollPct={bt:0,wf:0,rob:0,twf:0};
+function pollTest(mode,dir){
+  const prog=$(mode+'_prog'); if(prog)prog.classList.add('show');
+  _pollPct[mode]=0;
+  clearInterval(TIMERS[mode]);
+  // animasyon: zamanla ilerle
+  TIMERS[mode+'_anim']=setInterval(()=>{
+    _pollPct[mode]=Math.min(_pollPct[mode]+2,90);
+    const f=$(mode+'_progfill'); if(f) f.style.width=_pollPct[mode]+'%';
+  },500);
+  TIMERS[mode]=setInterval(async()=>{
+    const s=await call(STATUS_FNS[mode]);
+    if(s&&!s.running){
+      clearInterval(TIMERS[mode]); clearInterval(TIMERS[mode+'_anim']);
+      const f=$(mode+'_progfill'); if(f){f.style.width='100%';}
+      setTimeout(()=>{const p=$(mode+'_prog');if(p)p.classList.remove('show');},1200);
+      if(mode==='bt'){loadBtHist();loadBtResult(dir);}
+      else if(mode==='wf'){loadWfHist();loadWfResult(dir);}
+      else if(mode==='rob'){loadRobHist();loadRobResult(dir);}
+      else{loadTwfHist();loadTwfResult(dir);}
+      appendLog(['['+mode.toUpperCase()+'] Tamamlandı: '+dir]);
+    }
+  },2000);
+  appendLog(['['+mode.toUpperCase()+'] Başlatıldı…']);
+}
+
+// ════════════════ Backtest ════════════════
+let _curBtFolder='';
+async function loadBtHist(){
+  const h=await call('get_backtest_history');$('bt_cnt').textContent=h?h.length:0;
+  const box=$('bt_hist');if(!h||!h.length){box.innerHTML='<div class="empty">Geçmiş test yok</div>';return;}
+  box.innerHTML=h.map(m=>buildHCard(m,'bt')).join('');
+}
+function buildHCard(m,mode){
+  const s=m.summary||{};const pnl=parseFloat(s.Net_PnL_USD)||0;
+  const folder=m.folder||'';
+  const date=folder.slice(0,16).replace('_',' ');
+  const tag=s.President_Enabled=='1'?'PRESIDENT':'LEGACY';
+  return `<div class="hcard" onclick="sel${mode.toUpperCase()}(this,'${esc(folder)}')" data-folder="${esc(folder)}">
+    <div><span class="hdate">${esc(date)}</span><span class="htag">${tag}</span></div>
+    <div class="hmeta">${esc(s.Toplam_Islem||'?')} işlem · ${esc(s.Max_DD_Pct||'?')} DD</div>
+    <div class="hstats">
+      <span class="ms2 ${pnl>=0?'g':'r'}">${money(pnl)}</span>
+      <span class="ms2 b">${esc(s.Kazanma_Orani||'—')}</span>
+      <span class="ms2 b">Sharpe ${esc(s.Sharpe||'—')}</span>
+    </div></div>`;
+}
+async function selBT(el,folder){
+  document.querySelectorAll('#bt_hist .hcard').forEach(c=>c.classList.remove('sel'));el.classList.add('sel');
+  await loadBtResult(folder);
+}
+async function loadBtResult(folder){
+  if(!folder) return;
+  _curBtFolder=folder;
+  const res=await call('get_backtest_results',folder); if(!res||res.error)return;
+  $('bt_ph').style.display='none'; $('bt_res').style.display='block';
+  const s=res.summary||{},c=res.config||{};
+  $('bt_rtitle').textContent=folder.split(/[\\/]/).pop()||'Sonuç';
+  $('bt_rmeta').textContent=(c.interval||'1h')+' · '+(c.days||'?')+' gün · '+(c.top||'?')+' sembol · '+(s.President_Enabled=='1'?'President':'Legacy');
+  $('bt_metrics').innerHTML=[
+    metricCard('Net PnL',money(s.Net_PnL_USD),cls(s.Net_PnL_USD)),
+    metricCard('Win Rate',s.Kazanma_Orani||'—','neu'),
+    metricCard('Max DD',s.Max_DD_Pct||'—','neg'),
+    metricCard('Sharpe',s.Sharpe||'—',parseFloat(s.Sharpe)>=0?'neu':'neg'),
+  ].join('');
+  // snapshot
+  const risk=c.risk||{},thr=c.thresholds||{};
+  const get=k=>(thr[k]!==undefined?thr[k]:(risk[k]!==undefined?risk[k]:'—'));
+  $('bt_snap').innerHTML=[['score_long_open',get('score_long_open')],['hard_stop_pct',get('hard_stop_pct')+'%'],
+    ['take_profit_min_pct',get('take_profit_min_pct')+'%'],['trailing_step_pct',get('trailing_step_pct')+'%'],
+    ['atr_multiplier',get('atr_multiplier')],['min_profit_close_pct',get('min_profit_close_pct')+'%']
+  ].map(([k,v])=>'<div class="snr"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>').join('');
+  // donut
+  const donut={};Object.keys(s).forEach(k=>{const mt=k.match(/^Exit_(.+)_Sayi$/);if(mt&&s[k]>0)donut[mt[1]]=parseInt(s[k]);});
+  drawDonut($('bt_donut'),$('bt_legend'),donut,{sz:150});
+  // equity
+  drawLine($('bt_chart'),(res.equity||[]).map(p=>({v:p.v})),{h:175});
+  // del button
+  $('bt_del_btn').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
+    await call('delete_backtest',folder.split(/[\\/]/).pop());loadBtHist();$('bt_res').style.display='none';$('bt_ph').style.display='block';};
+}
+
+// ════════════════ Analiz paneli ════════════════
+let _apMode='bt',_apFolder='';
+function openAnalysis(mode){
+  _apMode=mode; _apFolder=mode==='bt'?_curBtFolder:(mode==='wf'?_curWfFolder:(mode==='rob'?_curRobFolder:''));
+  if(!_apFolder) return;
+  $('overlay').classList.add('show'); $('apanel').classList.add('open');
+  loadAnalysis(_apMode,_apFolder);
+}
+function closeAnalysis(){$('overlay').classList.remove('show');$('apanel').classList.remove('open');}
+$('overlay').onclick=closeAnalysis;
+
+async function loadAnalysis(mode,folder){
+  let res=null;
+  if(mode==='bt') res=await call('get_backtest_results',folder);
+  else if(mode==='wf') res=await call('get_wf_results',folder);
+  else if(mode==='rob') res=await call('get_rob_results',folder);
+  if(!res||res.error) return;
+  const s=res.summary||{},c=res.config||{};
+  const pnl=parseFloat(s.Net_PnL_USD||s.Toplam_PnL||0);
+  $('ap_title').textContent=folder.split(/[\\/]/).pop()||'Analiz';
+  $('ap_meta').textContent=(mode==='bt'?'Backtest':'Walk-Forward')+' · '+(c.interval||'1h');
+  // özet
+  $('ap_ozet_metrics').innerHTML=[
+    metricCard('Net PnL',money(pnl),cls(pnl)),
+    metricCard('Win Rate',s.Kazanma_Orani||'—','neu'),
+    metricCard('Max DD',s.Max_DD_Pct||'—','neg'),
+    metricCard('Sharpe',s.Sharpe||'—',parseFloat(s.Sharpe)>=0?'neu':'neg'),
+    metricCard('İşlem Sayısı',s.Toplam_Islem||'—','neu'),
+    metricCard('Bloklanan',s.Bloklanan_Sinyal||'—','neu'),
+  ].join('');
+  // snap
+  const risk=c.risk||{},thr=c.thresholds||{};
+  const get=k=>(thr[k]!==undefined?thr[k]:(risk[k]!==undefined?risk[k]:'—'));
+  $('ap_snap').innerHTML=[['score_long_open',get('score_long_open')],['hard_stop_pct',get('hard_stop_pct')+'%'],
+    ['take_profit_min_pct',get('take_profit_min_pct')+'%'],['trailing_step_pct',get('trailing_step_pct')+'%'],
+  ].map(([k,v])=>'<div class="snr"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>').join('');
+  // donut
+  const donut={};Object.keys(s).forEach(k=>{const mt=k.match(/^Exit_(.+)_Sayi$/);if(mt&&s[k]>0)donut[mt[1]]=parseInt(s[k]);});
+  drawDonut($('ap_donut'),$('ap_legend'),donut,{sz:140});
+  // equity
+  if(res.equity&&res.equity.length) drawLine($('ap_chart'),res.equity.map(p=>({v:p.v})),{h:170});
+  // trades
+  $('ap_trades_w').innerHTML=tbl(res.trades,['Sembol','Yon','Giris','Cikis','GirisFiyati','CikisFiyati','KarPct','Final_PnL','TP1_PnL','Net_PnL','Giris_Komisyon','Cikis_Komisyon','Sebep','Skor','Rejim','Label','BarsHeld','DecisionID','CoreScore','ShortScore','CascadeScore']);
+  // BOA
+  $('ap_boa_w').innerHTML=tbl(res.boa,['Sebep','Sayi','WinRate','ToplamPnL','OrtPnL']);
+  $('ap_boa_reason_w').innerHTML=tbl(res.boa_reason,['Sebep','Blok_Sayisi','Gereksiz_Engel','Dogru_Engel','Gereksiz_Pct','Ort_Hipotetik_PnL']);
+  $('ap_boa_sym_w').innerHTML=tbl(res.boa_symbol,['Sembol','Blok_Sayisi','Gereksiz_Engel','Dogru_Engel','Gereksiz_Pct','Ort_Hipotetik_PnL']);
+  $('ap_boa_reg_w').innerHTML=tbl(res.boa_regime,['Rejim','Blok_Sayisi','Gereksiz_Engel','Dogru_Engel','Gereksiz_Pct','Ort_Hipotetik_PnL']);
+  // filtre
+  $('ap_filtre_w').innerHTML=tbl(res.filter_events);
+  // ranking
+  const rr=(res.filter_events||[]).filter(r=>String(r.cause||'').startsWith('RANK_'));
+  const rcnt={}; rr.forEach(r=>{const c=r.cause||'?'; rcnt[c]=(rcnt[c]||0)+1;});
+  const rsum=Object.keys(rcnt).sort((a,b)=>rcnt[b]-rcnt[a]).map(k=>({cause:k,count:rcnt[k]}));
+  $('ap_rank_reason_w').innerHTML=tbl(rsum,['cause','count']);
+  let lastTs=rr.length?rr[rr.length-1].ts:'';
+  let latest=rr.filter(r=>r.ts===lastTs).slice(-50);
+  $('ap_rank_latest_w').innerHTML=tbl(latest,['ts','symbol','cause','rank','side','score','quality_score','label','boa_adj','selected_min_rank_score']);
+  // ghost
+  $('ap_ghost_w').innerHTML=tbl(res.ghost);
+  // President
+  const presFolder=folder+(_apMode==='bt'?'/_president':'');
+  // TODO: backtest president logları ayrı klasörde; app.py'den çekilirse gösterilir
+  $('ap_pres_dec_w').innerHTML='<div class="empty">Backtest president logları: klasör/_president/president_decisions.csv</div>';
+  $('ap_pres_votes_w').innerHTML='<div class="empty">Klasör/_president/branch_votes.csv</div>';
+
+  // del + folder
+  $('ap_del').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
+    const fn=folder.split(/[\\/]/).pop();
+    if(_apMode==='bt') await call('delete_backtest',fn);
+    else if(_apMode==='wf') await call('delete_wf',fn);
+    else await call('delete_rob',fn);
+    closeAnalysis();
+    if(_apMode==='bt')loadBtHist();else if(_apMode==='wf')loadWfHist();else loadRobHist();
+  };
+}
+
+// ════════════════ Walk-Forward ════════════════
+let _curWfFolder='';
+async function loadWfHist(){const h=await call('get_wf_history');$('wf_cnt').textContent=h?h.length:0;
+  const b=$('wf_hist');if(!h||!h.length){b.innerHTML='<div class="empty">Geçmiş yok</div>';return;}
+  b.innerHTML=h.map(m=>buildHCard2(m,'WF')).join('');}
+function buildHCard2(m,lbl){const s=m.summary||{},f=m.folder||'',pnl=parseFloat(s.Toplam_PnL||0);
+  return `<div class="hcard" onclick="selWF(this,'${esc(f)}')" data-folder="${esc(f)}">
+    <div><span class="hdate">${esc(f.slice(0,16).replace('_',' '))}</span><span class="htag">${lbl}</span></div>
+    <div class="hmeta">${esc(s.Donem||'—')}</div>
+    <div class="hstats"><span class="ms2 ${pnl>=0?'g':'r'}">${money(pnl)}</span>
+    <span class="ms2 b">${esc((s.Pozitif_Ay||0)+'/'+(s.Toplam_Ay||0)+' ay')}</span></div></div>`;}
+async function selWF(el,f){document.querySelectorAll('#wf_hist .hcard').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');await loadWfResult(f);}
+async function loadWfResult(folder){if(!folder)return;_curWfFolder=folder;
+  const res=await call('get_wf_results',folder);if(!res||res.error||!Object.keys(res.summary||{}).length)return;
+  $('wf_ph').style.display='none';$('wf_res').style.display='block';
+  const s=res.summary;$('wf_rtitle').textContent=folder.split(/[\\/]/).pop();
+  const pnl=parseFloat(s.Toplam_PnL||0);
+  $('wf_metrics').innerHTML=[metricCard('Toplam PnL',money(pnl),cls(pnl)),
+    metricCard('Pozitif Ay',(s.Pozitif_Ay||0)+'/'+(s.Toplam_Ay||0),'neu'),
+    metricCard('Ort. Aylık',money(s.Ort_Aylik_PnL),cls(s.Ort_Aylik_PnL))].join('');
+  const m=res.monthly||[];drawBars($('wf_chart'),m.map(r=>r.Ay),m.map(r=>parseFloat(r.NetPnL)||0),{h:160});
+  $('wf_tbl').innerHTML=tbl(m,['Ay','Islem','WinRate','NetPnL','Getiri','BitisEquity']);
+  $('wf_del').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
+    await call('delete_wf',folder.split(/[\\/]/).pop());loadWfHist();$('wf_res').style.display='none';$('wf_ph').style.display='block';};}
+
+// ════════════════ Robustness ════════════════
+let _curRobFolder='';
+async function loadRobHist(){const h=await call('get_rob_history');$('rob_cnt').textContent=h?h.length:0;
+  const b=$('rob_hist');if(!h||!h.length){b.innerHTML='<div class="empty">Geçmiş yok</div>';return;}
+  b.innerHTML=h.map(m=>{const s=m.summary||{},f=m.folder||'',pnl=parseFloat(s.Toplam_PnL||0);
+    return `<div class="hcard" onclick="selROB(this,'${esc(f)}')" data-folder="${esc(f)}">
+      <div><span class="hdate">${esc(f.slice(0,16).replace('_',' '))}</span><span class="htag">ROB</span></div>
+      <div class="hmeta">${esc(s.Donem||'—')}</div>
+      <div class="hstats"><span class="ms2 ${pnl>=0?'g':'r'}">${money(pnl)}</span>
+      <span class="ms2 b">${esc((s.Pozitif_Hafta||0)+'/'+(s.Toplam_Hafta||0)+' hf')}</span></div></div>`;}).join('');}
+async function selROB(el,f){document.querySelectorAll('#rob_hist .hcard').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');await loadRobResult(f);}
+async function loadRobResult(folder){if(!folder)return;_curRobFolder=folder;
+  const res=await call('get_rob_results',folder);if(!res||res.error||!Object.keys(res.summary||{}).length)return;
+  $('rob_ph').style.display='none';$('rob_res').style.display='block';
+  const s=res.summary; $('rob_rtitle').textContent=folder.split(/[\\/]/).pop();
+  const pnl=parseFloat(s.Toplam_PnL||0);
+  $('rob_metrics').innerHTML=[metricCard('Toplam PnL',money(pnl),cls(pnl)),
+    metricCard('Pozitif Hafta',(s.Pozitif_Hafta||0)+'/'+(s.Toplam_Hafta||0),'neu'),
+    metricCard('Ort. Haftalık',money(s.Ort_Haftalik_PnL),cls(s.Ort_Haftalik_PnL))].join('');
+  const wk=res.weekly||[];drawBars($('rob_chart'),wk.map(r=>r.Hafta),wk.map(r=>parseFloat(r.NetPnL)||0),{h:160});
+  $('rob_tbl').innerHTML=tbl(wk,['Hafta','Semboller','Islem','WinRate','NetPnL','Getiri']);
+  $('rob_del').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
+    await call('delete_rob',folder.split(/[\\/]/).pop());loadRobHist();$('rob_res').style.display='none';$('rob_ph').style.display='block';};}
+
+// ════════════════ True WF ════════════════
+async function loadTwfHist(){const h=await call('get_true_wf_history');$('twf_cnt').textContent=h?h.length:0;
+  const b=$('twf_hist');if(!h||!h.length){b.innerHTML='<div class="empty">Geçmiş yok</div>';return;}
+  b.innerHTML=h.map(m=>{const s=m.summary||{},f=m.folder||'',pnl=parseFloat(s.Toplam_OOS_PnL||0);
+    return `<div class="hcard" onclick="selTWF(this,'${esc(f)}')" data-folder="${esc(f)}">
+      <div><span class="hdate">${esc(f.slice(0,16).replace('_',' '))}</span><span class="htag">OOS</span></div>
+      <div class="hmeta">${esc((s.Fold_Sayisi||0)+' fold · train '+(s.Train_Gun||60)+'g')}</div>
+      <div class="hstats"><span class="ms2 ${pnl>=0?'g':'r'}">${money(pnl)}</span>
+      <span class="ms2 b">${esc((s.Pozitif_Fold||0)+'/'+(s.Fold_Sayisi||0)+' pozitif')}</span></div></div>`;}).join('');}
+async function selTWF(el,f){document.querySelectorAll('#twf_hist .hcard').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');await loadTwfResult(f);}
+async function loadTwfResult(folder){if(!folder)return;
+  const res=await call('get_true_wf_results',folder);if(!res||res.error||!Object.keys(res.summary||{}).length)return;
+  $('twf_ph').style.display='none';$('twf_res').style.display='block';
+  const s=res.summary;$('twf_rtitle').textContent=folder.split(/[\\/]/).pop();
+  const pnl=parseFloat(s.Toplam_OOS_PnL||0);
+  $('twf_metrics').innerHTML=[metricCard('OOS PnL',money(pnl),cls(pnl)),
+    metricCard('Pozitif Fold',(s.Pozitif_Fold||0)+'/'+(s.Fold_Sayisi||0),'neu'),
+    metricCard('Ort. Fold',money(s.Ort_Fold_PnL),cls(s.Ort_Fold_PnL)),
+    metricCard('Train/Test/Roll',(s.Train_Gun||60)+'/'+(s.Test_Gun||30)+'/'+(s.Roll_Gun||30)+'g','neu')].join('');
+  const f=res.folds||[];drawBars($('twf_chart'),f.map(r=>'F'+r.Fold),f.map(r=>parseFloat(r.OOS_NetPnL)||0),{h:160});
+  $('twf_tbl').innerHTML=tbl(f,['Fold','Train','Test','Secilen_Param','Train_PnL','OOS_Islem','OOS_WinRate','OOS_NetPnL','OOS_MaxDD']);}
+
+// ════════════════ President ════════════════
+async function loadPresident(){
+  const pr=await call('get_president_state');if(!pr)return;
+  if(pr.ok&&pr.risk){const r=pr.risk;
+    $('pres_risk').innerHTML=[metricCard('Açık Long',r.open_longs||0,'neu'),
+      metricCard('Açık Short',r.open_shorts||0,'neu'),
+      metricCard('Günlük PnL',money(r.daily_pnl),cls(r.daily_pnl)),
+      metricCard('Aylık PnL',money(r.monthly_pnl),cls(r.monthly_pnl))].join('');}
+  $('pres_dec_w').innerHTML=tbl(pr.decisions,['Tarih','DecisionID','Sembol','Action','Side','Score','Label','Reason','Shadow']);
+  $('pres_shadow_w').innerHTML=tbl(pr.shadows,['Tarih','DecisionID','Sembol','Side','Score','Label','Reason']);
+  $('pres_votes_w').innerHTML=tbl(pr.votes,['Tarih','Sembol','Dal','Action','Side','Score','Confidence','Shadow','Reason']);
+}
+
+// ════════════════ Config ════════════════
+let CFG_DATA=null;
+const SECLBL={general:'Genel',risk:'Risk Yönetimi',limits:'Limitler',thresholds:'Skor Eşikleri',
+  dynamic_threshold:'Dinamik Eşik',btc_filter:'BTC Filtresi',adx_filter:'ADX Filtresi',
+  rsi_filter:'RSI Filtresi',atr_filter:'ATR Filtresi',mtf:'Çoklu Zaman (MTF)',
+  partial_tp:'Kısmi TP',dynamic_trail:'Dinamik Trail',market_regime:'Piyasa Rejimi',
+  adaptive_sl:'Adaptif SL',symbol_quality_filter:'Sembol Kalite',vol_position_filter:'Volatilite Pozisyon',
+  symbol_blacklist:'Kara Liste',reentry:'Re-entry',funding_filter:'Funding',misc:'Genel Ayarlar',
+  president:'★ President',core_long:'Dal: Core Long',short_surgeon:'Dal: Short Surgeon',
+  cascade_hunter:'Dal: Cascade Hunter',convex_position:'Convex Position',
+  ghost_trade_analysis:'Ghost Analiz',auto_symbol_filter:'Oto Sembol Filtresi'};
+const SECGRP={'Strateji':['thresholds','dynamic_threshold','mtf','partial_tp','dynamic_trail','adaptive_sl','market_regime'],
+  'Risk & Limit':['risk','limits','vol_position_filter','symbol_quality_filter','reentry'],
+  'Filtreler':['btc_filter','adx_filter','rsi_filter','atr_filter','funding_filter','symbol_blacklist','auto_symbol_filter','ghost_trade_analysis'],
+  'President & Dallar':['president','core_long','short_surgeon','cascade_hunter','convex_position'],
+  'Genel':['general','misc']};
+async function loadConfig(){const r=await call('get_config');
+  if(!r||!r.ok){$('cfg_secs').innerHTML='<div class="empty">Yüklenemedi</div>';return;}
+  CFG_DATA=r.data||{};renderConfig();$('cfg_st').textContent=Object.keys(CFG_DATA).length+' bölüm';}
+function renderConfig(){let h='';const used=new Set();
+  for(const[grp,secs]of Object.entries(SECGRP)){const pr=secs.filter(s=>s in CFG_DATA);if(!pr.length)continue;
+    h+='<div class="cfggh">'+grp+'</div>';for(const sec of pr){used.add(sec);h+=cfgSec(sec);}}
+  for(const sec of Object.keys(CFG_DATA)){if(!used.has(sec))h+=cfgSec(sec);}
+  $('cfg_secs').innerHTML=h;}
+function cfgSec(sec){const val=CFG_DATA[sec],lbl=SECLBL[sec]||sec;
+  const op=(sec==='president'||sec==='thresholds'||sec==='risk')?' open':'';
+  let body=(val&&typeof val==='object'&&!Array.isArray(val))?renderObj(sec,val,''):cfgField(sec,sec,val,'');
+  return '<details class="cfgs"'+op+'><summary>'+esc(lbl)+' <span class="badge">'+esc(sec)+'</span></summary><div class="cbody">'+body+'</div></details>';}
+function renderObj(sec,obj,prefix){let h='';
+  for(const k of Object.keys(obj)){const v=obj[k],path=prefix?prefix+'.'+k:k;
+    if(v&&typeof v==='object'&&!Array.isArray(v)){h+='<div class="cfggh">'+esc(k)+'</div>'+renderObj(sec,v,path);}
+    else h+=cfgField(sec,path,v,k);}return h;}
+function cfgField(sec,path,val,key){let ctrl;
+  if(typeof val==='boolean') ctrl='<select class="ctrl" data-sec="'+esc(sec)+'" data-path="'+esc(path)+'" data-type="bool"><option value="true"'+(val?' selected':'')+'>true</option><option value="false"'+(!val?' selected':'')+'>false</option></select>';
+  else if(Array.isArray(val)) ctrl='<input class="ctrl" data-sec="'+esc(sec)+'" data-path="'+esc(path)+'" data-type="array" value="'+esc(val.join(', '))+'">';
+  else if(typeof val==='number') ctrl='<input class="ctrl" type="number" step="any" data-sec="'+esc(sec)+'" data-path="'+esc(path)+'" data-type="num" value="'+esc(val)+'">';
+  else ctrl='<input class="ctrl" data-sec="'+esc(sec)+'" data-path="'+esc(path)+'" data-type="str" value="'+esc(val)+'">';
+  return '<div class="cfgrow"><label>'+esc(key||path)+'</label>'+ctrl+'</div>';}
+function setDeep(o,path,v){const p=path.split('.');let x=o;for(let i=0;i<p.length-1;i++){if(!(p[i]in x))x[p[i]]={};x=x[p[i]];}x[p[p.length-1]]=v;}
+async function cfgSave(){if(!CFG_DATA)return;
+  document.querySelectorAll('#cfg_secs .ctrl').forEach(el=>{const sec=el.dataset.sec,path=el.dataset.path,type=el.dataset.type;let v=el.value;
+    if(type==='bool')v=(v==='true');else if(type==='num')v=parseFloat(v);else if(type==='array')v=v.split(',').map(s=>s.trim()).filter(Boolean);
+    if(sec===path)CFG_DATA[sec]=v;else setDeep(CFG_DATA[sec],path,v);});
+  const r=await call('save_config',CFG_DATA);$('cfg_st').textContent=(r&&r.ok)?'✓ Kaydedildi':'Hata';}
+
+// ════════════════ Loglar ════════════════
+let _logIdx=0;
+function appendLog(lines){if(!lines||!lines.length)return;
+  const html=lines.map(l=>'<div>'+esc(l)+'</div>').join('');
+  [$('sysLog'),$('liveLog')].forEach(b=>{if(b){b.insertAdjacentHTML('beforeend',html);b.scrollTop=b.scrollHeight;}});
+  _logIdx+=lines.length;$('logcnt').textContent=_logIdx+' satır';}
+async function pollLogs(){const r=await call('get_logs',_logIdx);if(r&&r.lines&&r.lines.length){appendLog(r.lines);_logIdx=r.total;}}
+
+// ════════════════ Modül Durumu ════════════════
+async function loadModuleStatus(){
+  const r=await call('get_module_status');
+  const tb=$('module_status');
+  if(!tb)return;
+  if(!r||!r.ok){tb.innerHTML='<tr><td colspan="3" class="empty">Modül durumu alınamadı</td></tr>';return;}
+  tb.innerHTML=(r.modules||[]).map(m=>{
+    const st=String(m.state||'');
+    const cls=st.includes('ACTIVE')||st.includes('PAPER')||st.includes('FEATURE')||st.includes('SIZING')?'pos':(st.includes('MISSING')?'neg':'neu');
+    return '<tr><td>'+esc(m.name)+'</td><td class="'+cls+'">'+esc(st)+'</td><td>'+esc(m.detail||'')+'</td></tr>';
+  }).join('') || '<tr><td colspan="3" class="empty">Veri yok</td></tr>';
+}
+
+
+// ════════════════ Ranking / BOA Feedback ════════════════
+async function loadRankingBoa(){
+  const folder=($('rankFolder')&&$('rankFolder').value.trim())||'';
+  const r=await call('get_ranking_boa_dashboard',folder);
+  const rank=(r&&r.ranking)||{}; const boa=(r&&r.boa_feedback)||{};
+  if(!rank.ok){
+    $('rank_metrics').innerHTML=metricCard('Durum','Klasör yok','neg');
+    $('rank_reason_w').innerHTML='<div class="empty">'+esc(rank.error||'Ranking verisi yok')+'</div>';
+    return;
+  }
+  $('rank_metrics').innerHTML=[
+    metricCard('Klasör',rank.folder_name||'—','neu'),
+    metricCard('Selected',rank.selected||0,'pos'),
+    metricCard('Rejected',rank.rejected||0,(rank.rejected||0)>0?'neg':'neu'),
+    metricCard('Ort. Aday/Candle',rank.avg_candidates_per_rank_ts||0,'neu'),
+    metricCard('Max Aday/Candle',rank.max_candidates_per_rank_ts||0,'neu'),
+    metricCard('Rank Timestamp',rank.rank_timestamps||0,'neu'),
+    metricCard('BOA Memory',boa.exists?((boa.entries||0)+' kayıt'):'Yok',boa.exists?'pos':'neg'),
+    metricCard('BOA Path',boa.path?boa.path.split(/[\\/]/).pop():'—','neu')
+  ].join('');
+  $('rank_reason_w').innerHTML=tbl(rank.reason_rows||[],['cause','count']);
+  $('rank_latest_w').innerHTML=tbl(rank.latest_rows||[],['ts','symbol','cause','rank','side','score','quality_score','label','boa_adj','selected_min_rank_score']);
+  $('boa_pos_w').innerHTML=tbl(boa.top_positive||[],['key','edge','count','tp_rate','sl_rate','avg_close']);
+  $('boa_neg_w').innerHTML=tbl(boa.top_negative||[],['key','edge','count','tp_rate','sl_rate','avg_close']);
+  const out=$('rank_audit_out');
+  if(out) out.textContent='Ranking/BOA paneli yüklendi. Klasör: '+(rank.folder_name||'—')+'\nSon ranking timestamp: '+(rank.latest_ts||'—');
+}
+async function rankRunAudit(){
+  const folder=($('rankFolder')&&$('rankFolder').value.trim())||'';
+  const el=$('rank_audit_out'); if(el) el.textContent='Decision audit çalışıyor...';
+  const r=await call('run_decision_audit',folder);
+  if(el) el.textContent=(r&&r.audit)?r.audit:((r&&r.output)?r.output:(r&&r.error?r.error:'Sonuç yok'));
+  await loadRankingBoa();
+}
+
+// ════════════════ Bot kontrolleri ════════════════
+$('btnStart').onclick=async()=>{const mode=$('liveMode')?$('liveMode').value:'';await call('start_bot',mode);setHB('bot',true,'Bot '+(mode||'config')+' modda çalışıyor');};
+$('btnStop').onclick=async()=>{await call('stop_bot');setHB('bot',false,'Bot durduruldu');};
+$('btnRefSym').onclick=async()=>{await call('update_symbols');appendLog(['[SYS] Semboller güncellendi']);};
+$('btnValidate').onclick=async()=>{const el=$('validation_out'); if(el)el.textContent='Validate çalışıyor...'; const r=await call('run_validate'); if(el)el.textContent=(r&&r.output)?r.output:(r&&r.error?r.error:'Sonuç yok'); await loadModuleStatus();};
+$('btnAudit').onclick=async()=>{const el=$('validation_out'); if(el)el.textContent='Decision audit çalışıyor...'; const r=await call('run_decision_audit'); if(el)el.textContent=(r&&r.audit)?r.audit:((r&&r.output)?r.output:(r&&r.error?r.error:'Sonuç yok'));};
+
+// ════════════════ Boot ════════════════
+async function boot(){
+  bindStabs();
+  const si=await call('get_sys_info');if(si)$('sysVer').textContent=(si.name||'TRBOT')+' v'+(si.version||'8.2');
+  const today=new Date(),past=new Date(Date.now()-30*864e5),iso=d=>d.toISOString().slice(0,10);
+  $('m_s').value=iso(past);$('m_e').value=iso(today);
+  loadDashboard();loadBtHist();loadModuleStatus();
+  setInterval(()=>{const a=document.querySelector('.page.active').id;
+    if(a==='page-dashboard')loadDashboard();if(a==='page-trades')loadTrades();},4000);
+  setInterval(pollLogs,1500);setInterval(tickClock,1000);tickClock();
+}
+</script>
+</body>
+</html>

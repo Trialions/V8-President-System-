@@ -1,0 +1,386 @@
+general:
+  version: 8.5.7
+  name: TRBOT President System V8.5.7 Ranking Integrity Fix
+  exchange: binance
+  market_type: spot
+  base_currency: USDT
+risk:
+  risk_per_trade_pct: 1.0
+  hard_stop_pct: 1.5
+  take_profit_min_pct: 3.0
+  trailing_step_pct: 0.7
+  atr_multiplier: 2.0
+  max_stop_pct: 4.5
+  min_profit_close_pct: 3.0
+  use_atr_stop: true
+  use_trailing: true
+  min_hold_minutes: 60
+limits:
+  max_open_positions: 3
+  max_trades_per_day: 8
+  daily_target_pct: 10.0
+  daily_loss_limit_pct: 3.0
+  max_hold_hours: 48
+thresholds:
+  score_long_open: 82.0
+  score_short_open: 18.0
+  score_close: 50.0
+dynamic_threshold:
+  enabled: false
+  trend_score: 92.0
+  konsol_score: 99.0
+  neutral_score: 97.0
+  bearish_score: 999.0
+  min_score: 85.0
+  max_score: 999.0
+  strong_setup_discount: 2.0
+  strong_htf: 75.0
+  strong_adx: 35.0
+  strong_rsi_max: 68.0
+btc_filter:
+  enabled: false
+  lookback_candles: 4
+  drop_pct: 1.5
+adx_filter:
+  enabled: true
+  threshold: 29.0
+rsi_filter:
+  enabled: true
+  max_long: 72.0
+  min_short: 30.0
+atr_filter:
+  enabled: true
+  min_atr_pct: 0.8
+mtf:
+  enabled: true
+  htf_interval: 4h
+  htf_long_min: 60.0
+  htf_short_max: 45.0
+  preload_candles_htf: 500
+mode:
+  interval: 1h
+  top_n: 20
+  shard_size: 20
+  preload_candles: 1000
+partial_tp:
+  enabled: true
+  tp1_r_mult: 1.0
+  close_pct: 0.35
+dynamic_trail:
+  enabled: false
+  atr_mult: 0.5
+  min_pct: 0.5
+  max_pct: 2.5
+market_regime:
+  enabled: true
+  konsol_breakout_only: false
+  konsol_min_score: 98.0
+  konsol_min_adx: 30.0
+  konsol_min_atr_pct: 1.2
+  konsol_min_vol_ratio: 1.5
+  konsol_min_htf: 70.0
+  konsol_rsi_max_long: 68.0
+  konsol_size_mult: 0.5
+  neutral_size_mult: 0.35
+adaptive_sl:
+  trend_atr_mult: 2.0
+  konsol_atr_mult: 1.5
+  bearish_atr_mult: 1.2
+  trend_trail_mult: 1.0
+  konsol_trail_mult: 0.7
+symbol_quality_filter:
+  enabled: true
+  weak_symbol_multiplier: 0.35
+  min_qs: 8.0
+  min_atr_pct: 1.2
+  min_adx: 20.0
+  score_bonus: 5.0
+  min_trades_for_penalty: 2
+  soft_loss_pct: -0.012
+  hard_loss_pct: -0.025
+  loss_streak_penalty_after: 2
+  loss_streak_multiplier: 0.5
+  low_winrate_penalty_after_trades: 4
+  low_winrate_threshold: 0.35
+  low_winrate_multiplier: 0.65
+  recovery_multiplier: 0.85
+  manual_symbol_multipliers:
+    FILUSDT: 0.35
+    DOGEUSDT: 0.35
+    ATOMUSDT: 0.5
+    LINKUSDT: 0.65
+    APTUSDT: 0.5
+vol_position_filter:
+  enabled: false
+  high_atr_threshold: 2.5
+  high_atr_size_mult: 0.5
+symbol_blacklist:
+  enabled: false
+  symbols: []
+reentry:
+  enabled: false
+  max_reentries: 1
+  window_bars: 4
+  cooldown_bars: 0
+  min_score: 97.0
+  min_qs: 8.0
+  min_htf: 75.0
+  min_adx: 35.0
+  size_mult: 0.75
+  bar_seconds: 3600
+funding_filter:
+  enabled: false
+  long_max: 0.0005
+  short_min: -0.0005
+misc:
+  volume_burst_multiplier: 2.0
+  min_notional_usdt: 30000.0
+  commission_pct: 0.04
+  slippage_pct: 0.03
+president:
+  enabled: true
+  shadow_mode: true
+  min_votes_to_open: 1
+  consensus_bonus: 5.0
+  portfolio:
+    max_long_positions: 3
+    max_short_positions: 1
+    max_total_positions: 3
+    max_daily_loss_pct: 3.0
+    max_monthly_loss_pct: 10.0
+  branch_weights:
+    core_long: 0.7
+    short_surgeon: 0.2
+    cascade_hunter: 0.1
+  decision_thresholds:
+    scout: 62
+    normal: 72
+    strong: 84
+    attack: 93
+  decision_calibration:
+    enabled: true
+    attack_min_score: 94.0
+    attack_min_winning_votes: 2
+    attack_min_confirm_score: 70.0
+    attack_require_non_core_confirmation: true
+    attack_allow_shadow_confirmation: false
+    strong_min_score: 84.0
+    normal_min_score: 72.0
+    core_only_max_label: NORMAL
+    core_only_size_mult: 0.65
+    normal_size_mult: 0.75
+    strong_size_mult: 0.9
+    attack_size_mult: 1.0
+    scout_size_mult: 0.45
+  global_ranking:
+    enabled: true
+    write_rank_rejections: true
+    max_candidates_per_bar: 999
+    bad_quality_below: 58.0
+    chop_labels:
+    - CHOP_RISK
+    - EXHAUSTED
+    reject_reasons:
+    - RANK_REJECTED_LOWER_SCORE
+    - RANK_REJECTED_BAD_QUALITY
+    - RANK_REJECTED_CHOP_RISK
+    - RANK_REJECTED_SYMBOL_PENALTY
+    write_candidate_ranking_csv: true
+  boa_feedback:
+    enabled: true
+    memory_file: data/boa_feedback_memory.json
+    min_count: 8
+    weight: 1.0
+    max_adjustment: 6.0
+    note: BOA feedback is a small President feature only; it never bypasses President/RiskGovernor.
+core_long:
+  enabled: true
+  shadow_mode: false
+  htf_block_min: 52.0
+  htf_penalty_min: 65.0
+  htf_boost_min: 82.0
+short_surgeon:
+  enabled: true
+  shadow_mode: false
+  sl_dogru:
+    enabled: true
+    lookback_hours: 18
+    min_score: 70
+    min_drop_4h_pct: 1.0
+  btc_risk_off:
+    enabled: false
+    btc_drop_pct: 2.0
+    lookback_candles: 3
+    short_size_mult: 0.5
+  failed_breakout:
+    enabled: false
+    breakout_candles: 2
+    reversal_confirmation: true
+  cascade:
+    enabled: false
+cascade_hunter:
+  enabled: true
+  shadow_mode: true
+  price_volume_only: true
+  compression_bars: 10
+  compression_atr_mult: 0.5
+  min_convexity_score: 60.0
+  futures_flow:
+    enabled: false
+    oi_change_threshold: 0.05
+convex_position:
+  enabled: false
+  min_profit_pct_to_add: 1.5
+  max_pyramid_levels: 2
+  pyramid_size_mult: 0.5
+  min_r_value: 1.0
+ghost_trade_analysis:
+  enabled: true
+  lookforward_bars: 12
+  min_score_to_track: 90.0
+auto_symbol_filter:
+  refresh_interval_days: 7
+  min_trades: 1
+  tier1_pct: -2.0
+account:
+  starting_equity_usdt: 1000.0
+backtest:
+  president_execution_mode: simulated_active
+live:
+  president_execution_mode: paper
+position_rotation:
+  enabled: false
+  shadow_mode: true
+  min_candidate_score: 90.0
+  min_score_delta: 12.0
+  max_rotations_per_day: 2
+  allow_close_profitable: false
+indicator_engine:
+  require_adx_when_filter_enabled: false
+tp1_progress_manager:
+  enabled: true
+  check_after_bars: 5
+  min_progress_to_tp1: 0.25
+  reduce_pct: 0.35
+  only_reduce_if_not_profitable: true
+  tighten_trail_after_bars: 4
+  tighten_trail_mult: 0.55
+  early_exit_after_bars: 8
+  early_exit_if_change_below_r: -0.45
+adaptive_exit:
+  enabled: true
+  shadow_mode: false
+  strict_chop_guard: true
+  trend_runner_min_score: 78
+  scalp_exit_max_score: 43
+  exhausted_rsi: 72
+  trend_runner_gates:
+    min_entry_score: 95
+    min_htf_score: 70
+    min_adx: 22
+    max_rsi: 70
+    min_vol_ratio: 0.85
+    require_btc_ok: false
+  symbol_behavior:
+    enabled: true
+    min_closed_trades: 20
+    full_weight_trades: 50
+    min_ghost_samples: 100
+    max_score_impact: 6
+    neutral_score: 50
+  policies:
+    TREND_RUNNER:
+      tp1_close_pct: 0.08
+      trail_step_pct: 2.2
+      max_hold_hours: 72
+      breakeven_after_r: 1.0
+      breakeven_buffer_pct: 0.25
+      allow_trend_runner: true
+      size_mult: 1.0
+    NORMAL:
+      tp1_close_pct: 0.35
+      trail_step_pct: 1.0
+      max_hold_hours: 48
+      breakeven_after_r: 1.0
+      breakeven_buffer_pct: 0.15
+      allow_trend_runner: false
+      size_mult: 1.0
+    SCALP_EXIT:
+      tp1_close_pct: 0.45
+      trail_step_pct: 0.75
+      max_hold_hours: 18
+      breakeven_after_r: 0.8
+      breakeven_buffer_pct: 0.12
+      allow_trend_runner: false
+      size_mult: 0.85
+    CHOP_RISK:
+      tp1_close_pct: 0.5
+      trail_step_pct: 0.6
+      max_hold_hours: 12
+      breakeven_after_r: 0.7
+      breakeven_buffer_pct: 0.1
+      allow_trend_runner: false
+      size_mult: 0.75
+    EXHAUSTED:
+      tp1_close_pct: 0.6
+      trail_step_pct: 0.6
+      max_hold_hours: 12
+      breakeven_after_r: 0.7
+      breakeven_buffer_pct: 0.1
+      allow_trend_runner: false
+      size_mult: 0.75
+block_outcome_analysis:
+  enabled: true
+  horizons_hours:
+  - 4
+  - 8
+  - 12
+  - 24
+  cooldown_bars: 12
+  bar_seconds: 3600
+  tp_pct: 0.03
+  sl_pct: 0.015
+weekly_symbol_rotation:
+  enabled: true
+  shadow_mode: false
+  lookback_days: 30
+  refresh_days: 7
+  candidate_top: 70
+  top_n: 20
+  write_meta: true
+  meta_file: symbols_top70_meta.json
+  history_file: symbol_universe_history.csv
+  live_refresh_requires_no_open_positions: true
+  write_history: true
+quality_score:
+  enabled: true
+  mode: feature_only
+  president_score_adjust_max: 5.0
+adaptive_risk:
+  enabled: true
+  mode: sizing_hint_only
+  min_mult: 0.35
+  max_mult: 1.1
+execution:
+  short_mode: paper_backtest
+  real_orders_enabled: false
+score_integrity:
+  enabled: true
+  model: v8.5.3_ema_atr_momentum
+  max_pct_trades_above_97: 0.8
+  max_single_label_pct: 0.9
+  min_distinct_labels: 2
+  require_long_short_audit: true
+  warn_if_short_votes_but_no_short_trades: true
+validation:
+  fail_on_score_saturation: true
+gui:
+  show_validation_controls: true
+  show_module_status: true
+  show_paper_live_controls: true
+version: 8.5.7
+backtest_output_integrity:
+  write_active_universe: true
+  write_candidate_ranking_events: true
+  write_boa_feedback_memory_placeholder: true
+  write_tp1_progress_fields: true

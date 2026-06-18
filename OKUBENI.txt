@@ -1,0 +1,242 @@
+═══════════════════════════════════════════════════════════════════════
+  TRBOT — PRESIDENT SYSTEM  ·  V8.5  (FINAL — birleştirilmiş sürüm)
+═══════════════════════════════════════════════════════════════════════
+
+Binance Spot · 1h · PyWebView masaüstü uygulaması
+Mimari: President Governor + 3 dal (Core Long / Short Surgeon /
+Cascade Hunter) — TEK ortak karar pipeline (backtest / walk-forward /
+robustluk / gerçek-WF / canlı motor hepsi aynı
+PresidentRuntime.evaluate() yolunu kullanır)
+
+Bu sürüm, iki ayrı geliştirme hattının BİRLEŞTİRİLMİŞ halidir:
+  1) ChatGPT ile geliştirilen "V8.5" karar/PnL iyileştirmeleri
+     (Decision Calibration, TP1 Progress Manager, Symbol Penalty,
+     Regime Size Multiplier, Hybrid Config)
+  2) Bu asistanla geliştirilen V8.4 sistem sağlığı düzeltmeleri
+     (canlı motor <-> backtest parite, validate_system.py)
+
+─── V8.5'TE NE YENİ (ChatGPT tarafı, doğrulandı) ────────────────────
+
+* DECISION CALIBRATION
+  ATTACK/STRONG/NORMAL etiketi artık sadece final_score'a değil, kaç
+  dalın OY VERDİĞİNE ve non-core (Short/Cascade) teyidine bakıyor.
+  Sadece Core Long oy verirse en fazla STRONG olabilir (core_only_
+  max_label), boyut çarpanı da düşürülür (core_only_size_mult=0.7).
+
+  BİLİNEN DAVRANIŞ: Short Surgeon ve Cascade Hunter şu an
+  shadow_mode=true olduğu için (config'te bilinçli), ve
+  attack_allow_shadow_confirmation=false olduğu için, ATTACK etiketi
+  bu config ile MATEMATİKSEL OLARAK hiç tetiklenemez (gerçek 30 günlük
+  backtest'te 65/65 trade STRONG çıktı). Bu bir bug değil, config
+  tercihinin doğal sonucu — Short/Cascade canlı/non-shadow yapılırsa
+  ATTACK etiketi de devreye girer.
+
+* TP1 PROGRESS MANAGER
+  TP1'e belirli bar sayısında ilerlemeyen pozisyonlar için: trail
+  sıkılaştırma -> kısmi qty azaltma (komisyon dahil) -> hâlâ ilerleme
+  yoksa erken çıkış (EarlyNoTP1). backtest.py ve engine.py'de PARİTE
+  İÇİNDE çalışıyor (bu sürümde doğrulandı, bkz. aşağıdaki düzeltme).
+
+* SYMBOL PENALTY (symbol_manager.py)
+  Sembol bazlı agresif ceza: kümülatif zarar, ardışık zarar serisi,
+  düşük winrate, manuel liste (FILUSDT/DOGEUSDT/ATOMUSDT/LINKUSDT/
+  APTUSDT) — hepsi size_multiplier olarak uygulanıyor, hard blacklist
+  YAPMIYOR (sadece pozisyon küçültüyor).
+
+* REGIME SIZE MULTIPLIER
+  NEUTRAL/KONSOL rejimlerde pozisyon otomatik küçültülüyor
+  (market_regime.py -> neutral_size_mult / konsol_size_mult).
+
+─── V8.5'TE NE DÜZELTİLDİ (bu sürümde, asistan tarafı) ──────────────
+
+[KRİTİK] ENGINE.PY (CANLI MOTOR) KOMİSYON EKSİKLİĞİ DÜZELTİLDİ
+  TESPİT: ChatGPT'nin V8.5 sisteminde backtest.py her trade'den
+  komisyon+slipaj düşerken (_fee_cost ile notional bazlı), engine.py
+  (canlı motor) HİÇBİR YERDE komisyon hesaplamıyordu. Sonuç: backtest
+  sonucu canlı motorun gerçek davranışından sistematik olarak farklı
+  olacaktı — backtest'te optimize ettiğiniz sayı, canlıda komisyon
+  yüzünden gerçekleşmeyecek bir sayı olurdu.
+  DÜZELTME: engine.py'ye backtest.py ile BİREBİR AYNI _fee_cost() /
+  _gross_pnl() yardımcı fonksiyonları eklendi. Artık:
+    - Giriş komisyonu pozisyon açılışında hesaplanıp kaydediliyor
+      (entry_cost)
+    - Partial TP ve TP1 Progress reduce işlemlerinde komisyon düşülüyor
+    - _close() çıkış komisyonunu düşüyor VE Risk Governor'a/Symbol
+      Manager'a TOPLAM net (TP1+TP1_Progress+bu kapanış-giriş
+      komisyonu) gönderiyor — önceden ham, komisyonsuz pnl_usd
+      gönderiliyordu.
+  DOĞRULANDI: uçtan uca engine testi — komisyon hesaplaması beklenen
+  değerle fark=0.000000; risk governor'a giden toplam ham değerle
+  (yuvarlamasız) fark=0.00000000.
+
+[ORTA] ROTASYON SIRALAMASI — DOKÜMANTASYON NETLEŞTİRİLDİ
+  TESPİT: V8.4'te "rotasyon President kararından SONRA olmalı" diye
+  düzeltilen sıralama, bu V8.5 sisteminde (backtest.py'de) eski haline
+  (MAX_POSITIONS kontrolünde, President'tan ÖNCE) dönmüş görünüyordu.
+  GERÇEK DURUM: İnceleme sonucu, ChatGPT'nin _maybe_rotate_for_
+  candidate() / _maybe_rotate_live() fonksiyonlarını HER KOŞULDA
+  "return False" ile bitirdiği görüldü (kod içi yorum: "SAFETY PATCH
+  V8.4.1... fiziksel kapatma yapmaz, shadow-only"). Yani rotasyon
+  enabled=true olsa bile bu sürüm GERÇEK pozisyon kapatma YAPMIYOR,
+  sadece ROTATION_CANDIDATE_SHADOW logu üretiyor. Bu, V8.4'teki
+  çözümden daha temkinli bir tasarım — sıralamanın pratik bir etkisi
+  yok, ama gelecekte biri bu kilidi kaldırırsa diye sıralama doğru
+  noktada (en erken kontrol) bırakıldı ve yorumla netleştirildi.
+
+[KRİTİK] CANLI BOT ZİNCİRİ GERİ EKLENDİ (simulator.py ve bağımlıları)
+  TESPİT: Kullanıcının paylaştığı GitHub Versiyon-7 repo'su ile karşılaş-
+  tırma yapıldığında, V8.5 paketinde simulator.py (canlı bot orkestrasyon
+  katmanı — WebSocket başlatma, veri besleme, arka plan döngüleri) HİÇ
+  YOKTU. app.py bunu import etmeye çalışıyor, bulamayınca _SIM_OK=False
+  fallback'ine düşüyor ve start_bot()/stop_bot() SESSİZCE hiçbir şey
+  yapmıyordu — GUI'de "Canlı Başlat" basılsa bot çalışmazdı.
+  DÜZELTME: GitHub Versiyon-7'den şu dosyalar çekilip V8.5'in TradeEngine
+  API'siyle (seed_from_candles, on_candle, htf_last_time, confirm_open
+  paterni vb.) uyumluluğu doğrulanarak eklendi:
+    - simulator.py     (canlı orkestrasyon — değişmeden uyumlu çıktı)
+    - data_ws.py        (Binance WebSocket kline akışı — değişmedi)
+    - data_rest.py      (Binance REST preload/sync — değişmedi)
+    - data_macro.py     (Fear&Greed + funding rate sentiment — değişmedi)
+    - agent.py          (günlük otomatik özet raporu — değişmedi)
+    - optimizer.py      (saatlik/coin istatistikleri — değişmedi,
+                          zaten V8.5 log formatıyla uyumluydu)
+    - utils.py          (küçük format yardımcıları — değişmedi)
+  DÜZELTİLEN UYUMSUZLUK: agent_reporter.py'nin orijinal V7 hali, CSV'de
+  ayrı bir "OPEN" satırı olduğunu ve onu kapanışla eşleştirdiğini
+  varsayıyordu. V8.5'in engine.py._log_trade() formatında HER SATIR
+  zaten kapanmış bir trade'dir (ayrı OPEN satırı yazılmıyor) — bu yüzden
+  orijinal kod hiçbir trade bulamıyor, sürekli "Hiç kapalı işlem yok"
+  dönüyordu. agent_reporter.py bu pakette V8.5 formatına uyacak şekilde
+  basitleştirildi (artık eşleştirme yapmaya çalışmıyor).
+  CONFIG EKLENDİ: simulator.py'nin okuduğu mode.* (interval, top_n,
+  shard_size, preload_candles) ve mtf.preload_candles_htf alanları
+  config_online.yaml'a eklendi (önceden hiç yoktu).
+  DOĞRULANDI: app.py'nin yaptığı TAM AYNI import bloğu uçtan uca test
+  edildi — _SIM_OK=True, tüm 10 fonksiyon (get_status, get_pnl,
+  start_realtime, stop_realtime, vb.) çağrılabilir durumda.
+  requirements.txt'ye websocket-client eklendi (data_ws.py'nin zorunlu
+  bağımlılığı, önceden eksikti).
+
+VALIDATE_SYSTEM.PY EKLENDİ (V8.4'ten taşındı, bu sisteme uyarlandı)
+  Her değişiklikten sonra çalıştırın:
+      .venv\Scripts\activate
+      python validate_system.py
+  8+1 otomatik kontrol yapar: syntax, import zinciri, hayalet config,
+  bilinen çakışma kalıpları, engine<->backtest PnL parite kontrolü,
+  canlı motor kurulumu, [YENİ] canlı bot zinciri (simulator.py'nin
+  gerçekten import edilebilir olduğu — bu kontrol, simulator.py'nin
+  bir daha sessizce paketten eksik kalmasını önlemek için eklendi),
+  backtest PnL tutarlılığı, risk sayacı dengesi.
+
+─── BU SÜRÜMDE BAĞLANAN 4 CONFIG ALANI (V8.5 patch-2) ────────────────
+
+Önceki sürümde "yazılı ama kodda hiç okunmuyor" diye işaretlenen 11
+alandan 4'ü bu pakette gerçek koda bağlandı. HEPSİ varsayılan olarak
+KAPALI/eski-davranış geldi — test ederken açıp kapatabilirsiniz:
+
+  - indicator_engine.require_adx_when_filter_enabled (varsayılan: false)
+    backtest.py + engine.py'de parite içinde çalışıyor. false (mevcut
+    davranış) = ADX filtresi açıkken ADX hesaplanamazsa (0 gelirse)
+    sinyal bypass edilir, bloklanmaz. true = strict mod, ADX=0 da
+    bloklanır.
+
+  - btc_filter.enabled (varsayılan: false)
+    backtest.py + engine.py'de parite içinde çalışıyor. true yapılırsa,
+    BTC son lookback_candles mumda drop_pct'ten fazla düşerse TÜM LONG
+    sinyaller bloklanır. short_surgeon.btc_risk_off'tan AYRI bir
+    filtre — o sadece SHORT dalına özel, bu LONG tarafı için genel bir
+    güvenlik kapısı. Birim testle doğrulandı (BTC_FILTER_DROP olayı
+    doğru üretiliyor).
+
+  - cascade_hunter.price_volume_only (varsayılan: true = mevcut davranış)
+    false yapılırsa VE futures_flow.enabled=true ise, gerçek OI (open
+    interest) verisi sağlanırsa konveksite skoru bununla düzeltilir.
+    ŞU AN gerçek bir OI veri kaynağı entegre değil — veri verilmezse
+    (futures_oi=None) otomatik ve güvenli şekilde fiyat/hacim moduna
+    düşülür, crash olmaz. Birim testle 3 senaryo doğrulandı (veri yok,
+    veri var + pozitif, veri var + negatif).
+
+  - backtest.president_execution_mode (varsayılan: simulated_active)
+    CLI --president-mode argümanı VERİLMEDİĞİNDE kullanılan varsayılan
+    mod olarak bağlandı. CLI argümanı her zaman önceliklidir (geriye
+    uyumlu) — bu sadece CLI boşken devreye giren bir fallback.
+
+  NOT: live.president_execution_mode HÂLÂ bağlanmadı — backtest
+  tarafındaki mekanizmanın canlı (engine.py/app.py) eşdeğeri henüz
+  inşa edilmedi. validate_system.py bunu artık doğru şekilde "yanlış
+  pozitif olabilir" diye ayrı uyarıyor (leaf adı paylaşıldığı için
+  önceden yanlışlıkla "kullanılıyor" görünüyordu).
+
+─── BU SÜRÜMDE BİLİNEN, DÜZELTİLMEMİŞ NOKTALAR ──────────────────────
+
+Bunlar bug değil — gerçek özellik geliştirmesi gerektiren, henüz
+inşa edilmemiş taslaklar. validate_system.py bunları her çalıştırmada
+hatırlatır:
+
+  - short_surgeon.failed_breakout.*, short_surgeon.cascade.*
+    Docstring "4 mod (şu an SL_DOGRU + BTC_RISK_OFF aktif)" diyor —
+    bu 2 mod (failed breakout reversal, cascade) için algoritma henüz
+    hiç yazılmadı. Basit bir config-bağlama işi değil, yeni bir karar
+    mantığı gerektiriyor.
+
+  - auto_symbol_filter.* (refresh_interval_days, min_trades, tier1_pct)
+    Haftalık otomatik sembol rotasyonu/eleme mantığı symbol_manager.py
+    veya symbols_builder.py'de hiç yok. Bu alanlar için bir zamanlayıcı
+    + performans-bazlı eleme algoritması yazılması gerekiyor.
+
+  - cascade_hunter.futures_flow.oi_change_threshold
+    Kod tarafı artık hazır (yukarıda açıklandı) ama gerçek bir OI veri
+    kaynağı (Binance futures API'den open interest çekme) hiç entegre
+    değil. Veri kaynağı eklenmeden bu eşik hiçbir zaman devreye giremez.
+
+  - ATTACK etiketi yapısal olarak tetiklenemiyor (Short/Cascade
+    shadow_mode=true olduğu sürece) — bu ayrı bir konu, "1 numara"
+    olarak ileride ele alınacak.
+
+  - GUI (gui.html) yeni trade kolonlarını (TP1_Progress_PnL,
+    SymbolSizeMult, RegimeSizeMult, FinalSizeMult,
+    TP1_Progress_Reduced) GÖSTERMİYOR. Veriler CSV'lerde ve backtest
+    raporlarında mevcut, sadece arayüze henüz işlenmedi. Bu da "1
+    numara" ile birlikte ileride ele alınacak.
+
+  - HYBRID_CONFIG_NOTES.md dosyası bazı config bölümlerinden
+    (adaptive_exit, block_outcome_analysis, weekly_symbol_rotation,
+    quality_score, adaptive_risk) bahsediyor ama bunlar config'te HİÇ
+    yok — bu not dosyası muhtemelen başka bir konfigürasyon sürümü
+    için yazılmış, bu paketle birlikte taşınmış. Kendi
+    validate_hybrid_config.py'leri de bu yüzden FAIL veriyor
+    (validate_system.py'den BAĞIMSIZ, eski/farklı bir script).
+
+─── DAHA ÖNCEKİ SÜRÜMLERDEN KORUNAN KRİTİK DÜZELTMELER ──────────────
+
+  - confirm_open() pattern — risk sayacı SADECE gerçek pozisyon
+    açıldıktan sonra artar (filtreler önce çalışır)
+  - SL_DOGRU pending kuyruğu — look-ahead bias önleme, verdict SL
+    anından saatler sonra çözülür
+  - ForceClose -> EndOfTest, gerçek son mum fiyatı kullanılır
+  - RiskGovernor günlük/aylık reset candle zamanına göre (wall-clock
+    değil)
+  - Wilder ADX builtin fallback — pandas-ta kurulu olmasa da ADX
+    filtresi sessizce devre dışı kalmaz
+
+─── KURULUM ───────────────────────────────────────────────────────
+
+  1_KURULUM.bat      -> sanal ortam (venv) oluşturur, bağımlılıkları kurar
+  2_BASLAT.bat       -> venv aktive eder, app.py'yi başlatır
+  3_BACKTEST_CLI.bat -> GUI'siz hızlı backtest (30 gün, 1h, top 20)
+
+─── HER DEĞİŞİKLİKTEN SONRA ─────────────────────────────────────────
+
+      .venv\Scripts\activate
+      python validate_system.py
+
+  PASS/FAIL olarak biter. FAIL varsa (özellikle [4b] parite veya [7]
+  risk sayacı), bir sonraki pakette düzeltilmeli.
+
+  Bu pakette validate_system.py çalıştırıldığında SADECE [3] (hayalet
+  config) FAIL verir — yukarıda listelenen, henüz koda bağlanmamış
+  taslak alanlar yüzünden. Diğer 8 kontrol (syntax, imports, conflicts,
+  engine_parity, engine_boot, live_bot_chain, backtest_smoke,
+  risk_balance) PASS'tır.
+
+═══════════════════════════════════════════════════════════════════════
