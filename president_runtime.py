@@ -56,6 +56,12 @@ class PresidentRuntime:
         pkt = self.president.decide(symbol, candle_ts, votes, market_state)
         pkt.extra["quality_score_report"] = q_report.to_dict()
         pkt.extra["adaptive_risk_report"] = r_report.to_dict()
+        # V8.5.8 FIX: PresidentScore boşluğu — backtest.py _open_from_decision()
+        # packet_extra.get("president_score") okuyordu ama bu anahtar hiçbir
+        # zaman yazılmıyordu (final_score zaten packet.final_score'da duruyordu,
+        # extra'ya hiç kopyalanmamıştı). Artık trade kayıtlarında PresidentScore
+        # dolu gelir.
+        pkt.extra["president_score"] = pkt.final_score
         return pkt
 
     # ── Geri besleme ─────────────────────────────────────────────────
