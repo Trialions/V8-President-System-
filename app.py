@@ -86,7 +86,8 @@ def _list_folders(base: str) -> list:
 def _load_bt_folder(path: str) -> dict:
     result = {"summary": {}, "trades": [], "equity": [],
               "filter_events": [], "ghost": [], "boa": [], "boa_reason": [], "boa_symbol": [], "boa_regime": [],
-              "config": {}, "folder": path}
+              "config": {}, "folder": path,
+              "president_decisions": [], "president_shadows": [], "president_votes": []}
     try:
         # Summary
         sp = os.path.join(path, "backtest_summary.csv")
@@ -138,6 +139,18 @@ def _load_bt_folder(path: str) -> dict:
         if os.path.exists(cp):
             with open(cp, encoding="utf-8") as f:
                 result["config"] = json.load(f)
+        # V8.5.8: Bu backtest koşusuna ait President kararları/oyları —
+        # önceden gui.html'de "TODO" olarak bırakılmıştı, artık okunuyor.
+        pres_dir = os.path.join(path, "_president")
+        for key, fname, limit in [
+            ("president_decisions", "president_decisions.csv", 500),
+            ("president_shadows",   "shadow_opportunities.csv", 300),
+            ("president_votes",     "branch_votes.csv",         800),
+        ]:
+            fp = os.path.join(pres_dir, fname)
+            if os.path.exists(fp):
+                with open(fp, newline="", encoding="utf-8-sig") as f:
+                    result[key] = list(csv_mod.DictReader(f, delimiter=";"))[-limit:]
     except Exception as e:
         result["error"] = str(e)
     return result
@@ -244,6 +257,49 @@ class API:
     def get_logs(self, since_index: int = 0):
         with _log_lock:
             return {"lines": _log_buffer[since_index:], "total": len(_log_buffer)}
+
+    # ── Klasör Aç (V8.5.8 — önceden hiç bağlanmamıştı) ──────────────────
+    def open_folder(self, kind: str, folder: str):
+        """OS dosya yöneticisinde klasörü açar. kind: bt|wf|rob|twf."""
+        base_map = {"bt": BT_BASE, "wf": WF_BASE, "rob": ROB_BASE, "twf": TWF_BASE}
+        base = base_map.get(str(kind or "bt"), BT_BASE)
+        target = str(folder or "").strip()
+        path = target if os.path.isabs(target) else os.path.join(base, target)
+        if not path or not os.path.isdir(path):
+            return {"ok": False, "error": "Klasör bulunamadı."}
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(path)  # type: ignore[attr-defined]
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", path])
+            else:
+                subprocess.Popen(["xdg-open", path])
+            return {"ok": True, "path": path}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    # ── WF / ROB / TWF segment derinlemesine analiz (V8.5.8) ────────────
+    # Her segment (ay/hafta/fold) zaten kendi bağımsız Backtester çıktısı
+    # (backtest_trades.csv, filter_events.csv, _president/ vb.) ile
+    # tamamlanmış durumda; sadece _load_bt_folder() ile okunup aynı
+    # Analiz panelinde gösterilir. Hiçbir karar/hesap mantığına dokunulmaz.
+    def get_wf_segment_results(self, wf_folder: str, segment: str):
+        path = os.path.join(WF_BASE, str(wf_folder or ""), str(segment or ""))
+        if not os.path.isdir(path):
+            return {"error": "Segment bulunamadı."}
+        return _load_bt_folder(path)
+
+    def get_rob_segment_results(self, rob_folder: str, segment: str):
+        path = os.path.join(ROB_BASE, str(rob_folder or ""), str(segment or ""))
+        if not os.path.isdir(path):
+            return {"error": "Segment bulunamadı."}
+        return _load_bt_folder(path)
+
+    def get_twf_segment_results(self, twf_folder: str, segment: str):
+        path = os.path.join(TWF_BASE, str(twf_folder or ""), str(segment or ""))
+        if not os.path.isdir(path):
+            return {"error": "Segment bulunamadı."}
+        return _load_bt_folder(path)
 
     def get_hourly_stats(self):
         return get_hourly_stats()
