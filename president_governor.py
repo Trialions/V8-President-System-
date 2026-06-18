@@ -47,6 +47,14 @@ class PresidentGovernor:
         self.strong_min_score = float(dc.get("strong_min_score", 87.0))
         self.normal_min_score = float(dc.get("normal_min_score", 75.0))
         self.core_only_max_label = str(dc.get("core_only_max_label", "STRONG")).upper()
+        # V8.5.8: çok faktörlü label kalibrasyonu — core-only sinyaller artık
+        # körü körüne core_only_max_label'e sabitlenmiyor; Quality Score ve
+        # rejim yeterince destekliyorsa STRONG'a çıkabiliyor. Bu, NORMAL'e
+        # aşırı yığılma sorununu (V8.5.7 backtest'inde %94.8) hedefler.
+        self.core_only_quality_min      = float(dc.get("core_only_quality_min", 65.0))
+        self.core_only_choppy_regimes   = set(str(x).upper() for x in
+            dc.get("core_only_choppy_regimes", ["KONSOL", "CHOP", "RANGE", "BEARISH"]))
+        self.low_quality_demote_below   = float(dc.get("low_quality_demote_below", 35.0))
         self.label_size_mults = {
             "SCOUT": float(dc.get("scout_size_mult", 0.45)),
             "NORMAL": float(dc.get("normal_size_mult", 0.75)),
@@ -135,7 +143,8 @@ class PresidentGovernor:
             best      = max(winning, key=lambda v: v.score)
             sl_pct    = best.params.get("sl_pct", 0.02)
             base_size_mult = best.params.get("size_mult", 1.0)
-            label     = self._label(final_score, winning, side)
+            regime_u  = str((market_state or {}).get("regime", "NEUTRAL")).upper()
+            label     = self._label(final_score, winning, side, quality_score=q_score, regime=regime_u)
             size_mult = self._calibrated_size_mult(base_size_mult, label, winning)
             try:
                 size_mult *= float(r_report.get("risk_mult", 1.0))
@@ -155,11 +164,26 @@ class PresidentGovernor:
             # sonra confirm_open() çağrılmalı (filtreler sonrası).
             return pkt
 
-    def _label(self, score, winning=None, side=None):
+    def _label(self, score, winning=None, side=None, quality_score: float = 50.0, regime: str = "NEUTRAL"):
         """
         V8.5: ATTACK etiketini kalibre eder.
         Önceden sadece final_score >= attack ise tüm trade ATTACK oluyordu.
         Artık ATTACK için çoklu dal teyidi ve non-core confirmation aranır.
+
+        V8.5.8 ÇOK FAKTÖRLÜ KALİBRASYON:
+        Önceki davranış: core-only sinyaller (sadece core_long oy verdiğinde)
+        score >= strong_min_score olsa bile KÖRÜ KÖRÜNE core_only_max_label'e
+        (config'te "NORMAL") sabitleniyordu. Bu, branch katılım oranı düşük
+        olduğu için (cascade_hunter shadow, short_surgeon LONG'da nadiren oy
+        veriyor) trade'lerin ~%95'inin NORMAL'e yığılmasına yol açıyordu.
+        Yeni davranış: core-only bir sinyal STRONG'a çıkabilir EĞER Quality
+        Score yeterince yüksekse (core_only_quality_min) VE rejim "choppy"
+        değilse (core_only_choppy_regimes). Aksi halde eski korumacı davranış
+        (core_only_max_label'e düş) korunur — yani bu bir gevşetme değil,
+        sinyal kalitesine göre AYRIŞTIRMA.
+        Ayrıca: NORMAL bandındaki sinyaller Quality Score çok düşükse
+        (low_quality_demote_below) SCOUT'a düşürülür — düşük kaliteli "orta"
+        sinyaller artık NORMAL boyutuyla açılmıyor.
         """
         winning = winning or []
         if not self.calib_enabled:
@@ -181,11 +205,22 @@ class PresidentGovernor:
         if can_attack:
             return "ATTACK"
 
-        # Core-only sinyaller artık ATTACK olamaz. En fazla STRONG/NORMAL.
         core_only = len([v for v in winning if v.branch_name != "core_long"]) == 0
+        regime_u  = str(regime or "NEUTRAL").upper()
+        choppy    = regime_u in self.core_only_choppy_regimes
+        qscore    = float(quality_score if quality_score is not None else 50.0)
+
         if score >= self.strong_min_score:
-            return self.core_only_max_label if core_only else "STRONG"
+            if not core_only:
+                return "STRONG"
+            # Core-only: kalite ve rejim yeterince destekliyorsa STRONG'a izin ver.
+            if qscore >= self.core_only_quality_min and not choppy:
+                return "STRONG"
+            return self.core_only_max_label
         if score >= self.normal_min_score:
+            # Düşük kaliteli "orta" sinyaller NORMAL boyutuyla açılmasın.
+            if qscore < self.low_quality_demote_below:
+                return "SCOUT"
             return "NORMAL"
         if score >= self.t_scout:
             return "SCOUT"
