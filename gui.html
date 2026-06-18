@@ -142,16 +142,14 @@ tr:hover td{background:var(--panel2)}
 /* ── Split layout ── */
 .split{display:grid;grid-template-columns:260px 1fr;gap:18px;align-items:start}
 
-/* ── Analiz paneli (slide) ── */
-.apanel{position:fixed;top:0;right:-760px;width:760px;height:100vh;background:var(--panel);
-        border-left:1px solid var(--border2);z-index:100;transition:.3s;display:flex;flex-direction:column}
-.apanel.open{right:0}
+/* ── Analiz paneli (V8.5.8: artık sayfa içinde inline, popup/overlay değil) ── */
+.apanel{display:none;width:100%;background:var(--panel);border:1px solid var(--border2);
+        border-radius:10px;margin-top:18px;flex-direction:column}
+.apanel.open{display:flex}
 .apanel .aph{display:flex;align-items:center;justify-content:space-between;
              padding:14px 18px;border-bottom:1px solid var(--border);min-height:54px}
 .apanel .aph h3{font-size:15px;font-weight:700}
-.apanel .apbody{flex:1;overflow-y:auto;padding:18px}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99}
-.overlay.show{display:block}
+.apanel .apbody{padding:18px}
 
 /* ── Subtabs ── */
 .stabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap}
@@ -193,7 +191,22 @@ canvas{width:100%;display:block}
 .modal .ms{color:var(--muted);font-size:11px;margin-bottom:16px}
 .modal .acts{display:flex;gap:9px;justify-content:flex-end;margin-top:18px}
 
-/* ── Tooltip ── */
+/* ── Açıklama / yorum barı ── */
+.hint{background:var(--panel2);border:1px solid var(--border);border-left:3px solid var(--accent);
+      border-radius:6px;padding:9px 12px;font-size:11px;color:var(--muted);line-height:1.5;margin-bottom:10px}
+.hint b{color:var(--text)}
+
+/* ── Açıklanabilirlik (Explainability) kartları ── */
+.narrcard{background:var(--panel2);border:1px solid var(--border);border-radius:8px;
+          padding:11px 13px;margin-bottom:8px;font-size:11px;line-height:1.7}
+.narrcard .nhead{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap}
+.narrcard .nsym{font-weight:700;font-family:var(--mono);font-size:12px}
+.narrcard .nbody{color:var(--muted)}
+.narrcard .nbody b{color:var(--text);font-weight:600}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.chip{font-size:10px;font-family:var(--mono);padding:2px 7px;border-radius:10px;background:var(--raised);color:var(--text);border:1px solid var(--border2)}
+
+
 .tip{position:fixed;background:var(--raised);border:1px solid var(--border2);border-radius:7px;
      padding:8px 12px;font-size:11px;pointer-events:none;z-index:300;display:none;white-space:nowrap}
 </style>
@@ -385,12 +398,15 @@ canvas{width:100%;display:block}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div><div class="ptitle" id="wf_rtitle" style="font-size:16px">—</div>
                <div style="font-size:11px;color:var(--muted)">Aylık bağımsız segmentler</div></div>
-          <div style="gap:8px;display:flex"><button class="sm red" id="wf_del">Sil</button>
-            <button class="sm primary" onclick="openAnalysis('wf')">◁▷ Analiz</button></div>
+          <div style="gap:8px;display:flex">
+            <button class="sm ghost" id="wf_folder_btn" title="Klasörü aç">📁</button>
+            <button class="sm red" id="wf_del">Sil</button>
+            <button class="sm primary" onclick="openAnalysis('wf')">◁▷ Analiz</button>
+          </div>
         </div>
         <div class="grid g3" id="wf_metrics" style="margin-bottom:12px"></div>
         <div class="card" style="margin-bottom:12px"><div class="ch">Aylık PnL</div><canvas id="wf_chart" height="160"></canvas></div>
-        <div class="card"><div class="ch">Aylık Detay</div><div class="tw" id="wf_tbl"></div></div>
+        <div class="card"><div class="ch">Aylık Detay (satıra tıkla → o ayın tam analizi)</div><div class="tw" id="wf_tbl"></div></div>
       </div>
     </div>
   </div>
@@ -415,12 +431,15 @@ canvas{width:100%;display:block}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div><div class="ptitle" id="rob_rtitle" style="font-size:16px">—</div>
                <div style="font-size:11px;color:var(--muted)">Haftalık sembol rotasyonu</div></div>
-          <div style="gap:8px;display:flex"><button class="sm red" id="rob_del">Sil</button>
-            <button class="sm primary" onclick="openAnalysis('rob')">◁▷ Analiz</button></div>
+          <div style="gap:8px;display:flex">
+            <button class="sm ghost" id="rob_folder_btn" title="Klasörü aç">📁</button>
+            <button class="sm red" id="rob_del">Sil</button>
+            <button class="sm primary" onclick="openAnalysis('rob')">◁▷ Analiz</button>
+          </div>
         </div>
         <div class="grid g3" id="rob_metrics" style="margin-bottom:12px"></div>
         <div class="card" style="margin-bottom:12px"><div class="ch">Haftalık PnL</div><canvas id="rob_chart" height="160"></canvas></div>
-        <div class="card"><div class="ch">Haftalık Detay</div><div class="tw" id="rob_tbl"></div></div>
+        <div class="card"><div class="ch">Haftalık Detay (satıra tıkla → o haftanın tam analizi)</div><div class="tw" id="rob_tbl"></div></div>
       </div>
     </div>
   </div>
@@ -444,10 +463,18 @@ canvas{width:100%;display:block}
         Train→optimize→test→roll OOS testi.<br>Soldan koşu seç veya başlat.
       </div>
       <div id="twf_res" style="display:none">
-        <div class="ptitle" id="twf_rtitle" style="font-size:16px;margin-bottom:14px">—</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div><div class="ptitle" id="twf_rtitle" style="font-size:16px">—</div>
+               <div style="font-size:11px;color:var(--muted)">Train→optimize→test→roll OOS</div></div>
+          <div style="gap:8px;display:flex">
+            <button class="sm ghost" id="twf_folder_btn" title="Klasörü aç">📁</button>
+            <button class="sm red" id="twf_del">Sil</button>
+            <button class="sm primary" onclick="openAnalysis('twf')">◁▷ Analiz Aç</button>
+          </div>
+        </div>
         <div class="grid g4" id="twf_metrics" style="margin-bottom:12px"></div>
         <div class="card" style="margin-bottom:12px"><div class="ch">Fold OOS PnL</div><canvas id="twf_chart" height="160"></canvas></div>
-        <div class="card"><div class="ch">Fold Detayı</div><div class="tw" id="twf_tbl"></div></div>
+        <div class="card"><div class="ch">Fold Detayı (satıra tıkla → o fold'un tam analizi)</div><div class="tw" id="twf_tbl"></div></div>
       </div>
     </div>
   </div>
@@ -485,25 +512,34 @@ canvas{width:100%;display:block}
     <button class="sm primary" onclick="loadRankingBoa()">↻ Yenile</button>
     <button class="sm ghost" onclick="rankRunAudit()">◎ Audit Çalıştır</button>
   </div>
+  <div class="hint"><b>Bu sayfa ne anlatıyor?</b> Aynı mumda birden fazla sembol eş zamanlı sinyal verdiğinde President hangisini açtı, hangisini neden reddetti — ve geçmiş bloklardan öğrenilen BOA hafızasının şu an hangi sembol/rejim/yöne ne kadar puan ekleyip çıkardığını gösterir.</div>
   <div class="grid g4" id="rank_metrics" style="margin-bottom:12px"></div>
   <div class="grid g2" style="margin-bottom:12px">
     <div class="card">
       <div class="ch">Rank Rejection Özeti</div>
-      <div class="tw" id="rank_reason_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
+      <div class="hint" style="margin-bottom:8px">Her satır bir red sebebi: <b>BAD_QUALITY</b> (kalite skoru düşük), <b>CHOP_RISK</b> (rejim/label dağınık), <b>SYMBOL_PENALTY</b> (sembol geçmiş performansı zayıf), <b>LOWER_SCORE</b> (aynı mumda daha iyi aday vardı).</div>
+      <div class="tw" id="rank_reason_w" style="max-height:280px"><div class="empty">Yükleniyor…</div></div>
     </div>
     <div class="card">
-      <div class="ch">Son Ranking Candle Adayları</div>
-      <div class="tw" id="rank_latest_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
+      <div class="ch">Label Dağılımı</div>
+      <div class="hint" style="margin-bottom:8px">Açılan/seçilen adayların SCOUT/NORMAL/STRONG/ATTACK dağılımı. Tek bir etikette aşırı yığılma (örn. %90+ NORMAL), kalibrasyonun gözden geçirilmesi gerektiğine işaret eder.</div>
+      <canvas id="rank_label_chart" height="140"></canvas>
     </div>
+  </div>
+  <div class="card" style="margin-bottom:12px">
+    <div class="ch">Son Ranking Candle Adayları</div>
+    <div class="tw" id="rank_latest_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
   </div>
   <div class="grid g2" style="margin-bottom:12px">
     <div class="card">
       <div class="ch">BOA Feedback — Pozitif Edge</div>
-      <div class="tw" id="boa_pos_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
+      <div class="hint" style="margin-bottom:8px">Bu key'ler (sembol/rejim/sebep/yön) geçmişte bloklandığında genelde fiyat <b>kazanmış</b> — yani bu koşullarda President'a küçük bir pozitif puan ekleniyor.</div>
+      <div class="tw" id="boa_pos_w" style="max-height:280px"><div class="empty">Yükleniyor…</div></div>
     </div>
     <div class="card">
       <div class="ch">BOA Feedback — Negatif Edge</div>
-      <div class="tw" id="boa_neg_w" style="max-height:320px"><div class="empty">Yükleniyor…</div></div>
+      <div class="hint" style="margin-bottom:8px">Bu key'ler bloklandığında genelde fiyat <b>kaybetmiş</b> — yani blok doğru kararmış ve bu koşullarda küçük bir negatif puan ekleniyor.</div>
+      <div class="tw" id="boa_neg_w" style="max-height:280px"><div class="empty">Yükleniyor…</div></div>
     </div>
   </div>
   <div class="card">
@@ -552,8 +588,7 @@ canvas{width:100%;display:block}
 </main>
 </div><!-- shell -->
 
-<!-- ═══ ANALİZ PANELI (yana açılır) ═══ -->
-<div class="overlay" id="overlay" onclick="closeAnalysis()"></div>
+<!-- ═══ ANALİZ PANELI (artık inline; sayfa içinde ilgili sonucun altında görünür) ═══ -->
 <div class="apanel" id="apanel">
   <div class="aph">
     <div>
@@ -577,6 +612,7 @@ canvas{width:100%;display:block}
       <div class="stab" data-sub="ap-ghost">Ghost</div>
     </div>
     <div class="spane active" id="ap-ozet">
+      <div class="hint"><b>Özet:</b> bu koşunun toplam performansı, kapanış nedeni dağılımı ve equity eğrisi. Detaylı işlem bazlı kırılım için <b>İşlem Detayları</b> sekmesine geçin.</div>
       <div class="grid g2" id="ap_ozet_metrics" style="margin-bottom:12px"></div>
       <div class="grid g2" style="margin-bottom:12px">
         <div class="card"><div class="ch">Config Snapshot</div><div id="ap_snap"></div></div>
@@ -589,9 +625,13 @@ canvas{width:100%;display:block}
         </div>
       </div>
       <div class="card"><div class="ch">Equity Eğrisi</div><canvas id="ap_chart" height="170"></canvas></div>
+      <div class="card" style="margin-top:12px" id="ap_ozet_yorum_card">
+        <div class="ch">Otomatik Yorum</div>
+        <div class="logbox" id="ap_ozet_yorum" style="height:auto;min-height:60px"></div>
+      </div>
     </div>
     <div class="spane" id="ap-islem">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Net_PnL = Final_PnL + TP1_PnL − Giriş_Komisyon. Her komisyon ayrı kolonlarda gösterilir.</div>
+      <div class="hint">Net_PnL = Final_PnL + TP1_PnL + TP1_Progress_PnL − Giriş_Komisyon. <b>PresidentScore</b> kararın nihai skoru, <b>RankScore</b> aynı mumdaki adaylar arası sıralama skoru, <b>BOAFeedbackAdj</b> geçmiş blok analizinden gelen küçük düzeltmedir.</div>
       <div class="tw" id="ap_trades_w" style="max-height:500px"></div>
     </div>
     <div class="spane" id="ap-boa">
@@ -603,7 +643,7 @@ canvas{width:100%;display:block}
       </div>
       <div class="spane active" id="boa-exit"><div class="tw" id="ap_boa_w"></div></div>
       <div class="spane" id="boa-reason">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px"><b>Gereksiz Engel</b>: filtre blokladı, fiyat kazandı. <b>Doğru Engel</b>: filtre korudu.</div>
+        <div class="hint"><b>Gereksiz Engel</b>: filtre blokladı, fiyat kazandı (kaçırılmış fırsat). <b>Doğru Engel</b>: filtre korudu (zarar engellendi). Gereksiz_Pct yüksekse o filtre/sembol/rejimde fazla katı davranılıyor olabilir.</div>
         <div class="tw" id="ap_boa_reason_w"></div>
       </div>
       <div class="spane" id="boa-symbol"><div class="tw" id="ap_boa_sym_w"></div></div>
@@ -611,20 +651,22 @@ canvas{width:100%;display:block}
     </div>
     <div class="spane" id="ap-filtre"><div class="tw" id="ap_filtre_w" style="max-height:500px"></div></div>
     <div class="spane" id="ap-ranking">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Aynı candle içinde seçilen ve reddedilen adaylar. RANK_SELECTED açılanları, RANK_REJECTED_* seçilmeyenleri gösterir.</div>
+      <div class="hint">Aynı candle içinde seçilen ve reddedilen adaylar. <b>RANK_SELECTED</b> açılanları, <b>RANK_REJECTED_*</b> seçilmeyenleri (sebebiyle birlikte) gösterir. Daha fazla aday → daha seçici giriş anlamına gelir.</div>
       <div class="grid g2" style="margin-bottom:12px">
         <div class="card"><div class="ch">Ranking Özeti</div><div class="tw" id="ap_rank_reason_w"></div></div>
         <div class="card"><div class="ch">Son Ranking Candle</div><div class="tw" id="ap_rank_latest_w"></div></div>
       </div>
     </div>
     <div class="spane" id="ap-president">
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Bu test sırasında President'ın verdiği kararlar (sadece bu koşu). Candle zamanı kullanılır.</div>
+      <div class="hint">Bu test sırasında President'ın verdiği kararlar (sadece bu koşu). Candle zamanı kullanılır. <b>Açıklamalı Görünüm</b> sekmesi, açılan her trade için karar zincirini düz cümle olarak özetler.</div>
       <div class="stabs">
         <div class="stab active" data-sub="pres-d2">Kararlar</div>
         <div class="stab" data-sub="pres-v2">Dal Oyları</div>
+        <div class="stab" data-sub="pres-exp">Açıklamalı Görünüm</div>
       </div>
-      <div class="spane active" id="pres-d2"><div class="tw" id="ap_pres_dec_w"></div></div>
-      <div class="spane" id="pres-v2"><div class="tw" id="ap_pres_votes_w"></div></div>
+      <div class="spane active" id="pres-d2"><div class="tw" id="ap_pres_dec_w" style="max-height:480px"></div></div>
+      <div class="spane" id="pres-v2"><div class="tw" id="ap_pres_votes_w" style="max-height:480px"></div></div>
+      <div class="spane" id="pres-exp"><div id="ap_pres_explain_w"></div></div>
     </div>
     <div class="spane" id="ap-ghost"><div class="tw" id="ap_ghost_w" style="max-height:500px"></div></div>
   </div>
@@ -986,29 +1028,51 @@ async function loadBtResult(folder){
   // del button
   $('bt_del_btn').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
     await call('delete_backtest',folder.split(/[\\/]/).pop());loadBtHist();$('bt_res').style.display='none';$('bt_ph').style.display='block';};
+  // folder button (V8.5.8 — önceden bağlı değildi)
+  $('bt_folder_btn').onclick=async()=>{await call('open_folder','bt',folder.split(/[\\/]/).pop());};
 }
 
-// ════════════════ Analiz paneli ════════════════
-let _apMode='bt',_apFolder='';
+// ════════════════ Analiz paneli (V8.5.8: inline, popup değil) ════════════════
+let _apMode='bt',_apFolder='',_apSegment=null;
+const AP_RES_ID={bt:'bt_res',wf:'wf_res',rob:'rob_res',twf:'twf_res'};
 function openAnalysis(mode){
-  _apMode=mode; _apFolder=mode==='bt'?_curBtFolder:(mode==='wf'?_curWfFolder:(mode==='rob'?_curRobFolder:''));
+  _apMode=mode; _apSegment=null;
+  _apFolder=mode==='bt'?_curBtFolder:(mode==='wf'?_curWfFolder:(mode==='rob'?_curRobFolder:_curTwfFolder));
   if(!_apFolder) return;
-  $('overlay').classList.add('show'); $('apanel').classList.add('open');
+  _mountApanel(mode);
   loadAnalysis(_apMode,_apFolder);
 }
-function closeAnalysis(){$('overlay').classList.remove('show');$('apanel').classList.remove('open');}
-$('overlay').onclick=closeAnalysis;
+function openSegmentAnalysis(mode,parentFolder,segment){
+  _apMode=mode; _apFolder=parentFolder+' / '+segment; _apSegment={parent:parentFolder,segment:segment};
+  _mountApanel(mode);
+  loadAnalysis(_apMode,_apFolder);
+}
+function _mountApanel(mode){
+  const host=$(AP_RES_ID[mode]||'bt_res'), panel=$('apanel');
+  if(host&&panel) host.insertAdjacentElement('afterend',panel);
+  panel.classList.add('open');
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function closeAnalysis(){$('apanel').classList.remove('open');_apSegment=null;}
 
 async function loadAnalysis(mode,folder){
   let res=null;
-  if(mode==='bt') res=await call('get_backtest_results',folder);
-  else if(mode==='wf') res=await call('get_wf_results',folder);
-  else if(mode==='rob') res=await call('get_rob_results',folder);
+  if(_apSegment){
+    if(mode==='wf') res=await call('get_wf_segment_results',_apSegment.parent,_apSegment.segment);
+    else if(mode==='rob') res=await call('get_rob_segment_results',_apSegment.parent,_apSegment.segment);
+    else if(mode==='twf') res=await call('get_twf_segment_results',_apSegment.parent,_apSegment.segment);
+  } else {
+    if(mode==='bt') res=await call('get_backtest_results',folder);
+    else if(mode==='wf') res=await call('get_wf_results',folder);
+    else if(mode==='rob') res=await call('get_rob_results',folder);
+    else if(mode==='twf') res=await call('get_true_wf_results',folder);
+  }
   if(!res||res.error) return;
   const s=res.summary||{},c=res.config||{};
-  const pnl=parseFloat(s.Net_PnL_USD||s.Toplam_PnL||0);
+  const pnl=parseFloat(s.Net_PnL_USD||s.Toplam_PnL||s.Toplam_OOS_PnL||0);
+  const MLBL={bt:'Backtest',wf:'Walk-Forward',rob:'Robustluk',twf:'Gerçek WF (OOS)'};
   $('ap_title').textContent=folder.split(/[\\/]/).pop()||'Analiz';
-  $('ap_meta').textContent=(mode==='bt'?'Backtest':'Walk-Forward')+' · '+(c.interval||'1h');
+  $('ap_meta').textContent=(MLBL[mode]||mode)+' · '+(c.interval||'1h');
   // özet
   $('ap_ozet_metrics').innerHTML=[
     metricCard('Net PnL',money(pnl),cls(pnl)),
@@ -1029,8 +1093,20 @@ async function loadAnalysis(mode,folder){
   drawDonut($('ap_donut'),$('ap_legend'),donut,{sz:140});
   // equity
   if(res.equity&&res.equity.length) drawLine($('ap_chart'),res.equity.map(p=>({v:p.v})),{h:170});
+  // otomatik yorum (deterministik, kısa)
+  const topReason=Object.keys(donut).sort((a,b)=>donut[b]-donut[a])[0];
+  const yorum=$('ap_ozet_yorum');
+  if(yorum){
+    const wr=parseFloat(s.Kazanma_Orani)||0, dd=s.Max_DD_Pct||'—', sh=parseFloat(s.Sharpe)||0;
+    let txt=(pnl>=0?'Bu koşu pozitif sonuçla kapandı: ':'Bu koşu negatif sonuçla kapandı: ')+money(pnl)+' net PnL, '+
+      (s.Kazanma_Orani||'—')+' win rate, '+dd+' max düşüş, Sharpe '+sh.toFixed(2)+'.';
+    if(topReason) txt+=' En sık kapanış nedeni: '+topReason+' ('+donut[topReason]+' işlem).';
+    if(wr>0&&wr<40) txt+=' Win rate düşük — TP/SL oranı veya giriş filtreleri gözden geçirilmeli.';
+    if(parseFloat(dd)>5) txt+=' Max DD %5 üzerinde — risk boyutlandırması dikkatle izlenmeli.';
+    yorum.textContent=txt;
+  }
   // trades
-  $('ap_trades_w').innerHTML=tbl(res.trades,['Sembol','Yon','Giris','Cikis','GirisFiyati','CikisFiyati','KarPct','Final_PnL','TP1_PnL','Net_PnL','Giris_Komisyon','Cikis_Komisyon','Sebep','Skor','Rejim','Label','BarsHeld','DecisionID','CoreScore','ShortScore','CascadeScore']);
+  $('ap_trades_w').innerHTML=tbl(res.trades,['Sembol','Yon','Giris','Cikis','GirisFiyati','CikisFiyati','KarPct','Final_PnL','TP1_PnL','Net_PnL','Giris_Komisyon','Cikis_Komisyon','Sebep','Skor','Rejim','Label','PresidentScore','RankScore','BOAFeedbackAdj','PumpRisk','BarsHeld','DecisionID','CoreScore','ShortScore','CascadeScore','QualityScore']);
   // BOA
   $('ap_boa_w').innerHTML=tbl(res.boa,['Sebep','Sayi','WinRate','ToplamPnL','OrtPnL']);
   $('ap_boa_reason_w').innerHTML=tbl(res.boa_reason,['Sebep','Blok_Sayisi','Gereksiz_Engel','Dogru_Engel','Gereksiz_Pct','Ort_Hipotetik_PnL']);
@@ -1048,21 +1124,64 @@ async function loadAnalysis(mode,folder){
   $('ap_rank_latest_w').innerHTML=tbl(latest,['ts','symbol','cause','rank','side','score','quality_score','label','boa_adj','selected_min_rank_score']);
   // ghost
   $('ap_ghost_w').innerHTML=tbl(res.ghost);
-  // President
-  const presFolder=folder+(_apMode==='bt'?'/_president':'');
-  // TODO: backtest president logları ayrı klasörde; app.py'den çekilirse gösterilir
-  $('ap_pres_dec_w').innerHTML='<div class="empty">Backtest president logları: klasör/_president/president_decisions.csv</div>';
-  $('ap_pres_votes_w').innerHTML='<div class="empty">Klasör/_president/branch_votes.csv</div>';
+  // President — V8.5.8: artık gerçekten okunuyor (önceden TODO idi)
+  $('ap_pres_dec_w').innerHTML=tbl(res.president_decisions,['Tarih','DecisionID','Sembol','Action','Side','Score','Label','SizeMult','SL_Pct','Reason','Shadow']);
+  $('ap_pres_votes_w').innerHTML=tbl(res.president_votes,['Tarih','Sembol','Dal','Action','Side','Score','Confidence','Shadow','Reason']);
+  $('ap_pres_explain_w').innerHTML=buildExplainCards(res.trades||[]);
 
   // del + folder
-  $('ap_del').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
+  $('ap_folder').onclick=async()=>{
+    if(_apSegment){await call('open_folder',_apMode,_apSegment.parent+'/'+_apSegment.segment);return;}
+    await call('open_folder',_apMode,folder.split(/[\\/]/).pop());
+  };
+  $('ap_del').onclick=async()=>{
+    if(_apSegment) return; // segment'ler ayrı silinmez, parent koşu silinince gider
+    if(!confirm(folder+' silinsin mi?'))return;
     const fn=folder.split(/[\\/]/).pop();
     if(_apMode==='bt') await call('delete_backtest',fn);
     else if(_apMode==='wf') await call('delete_wf',fn);
-    else await call('delete_rob',fn);
+    else if(_apMode==='rob') await call('delete_rob',fn);
+    else await call('delete_true_wf',fn);
     closeAnalysis();
-    if(_apMode==='bt')loadBtHist();else if(_apMode==='wf')loadWfHist();else loadRobHist();
+    if(_apMode==='bt')loadBtHist();else if(_apMode==='wf')loadWfHist();else if(_apMode==='rob')loadRobHist();else loadTwfHist();
   };
+}
+
+// ════════════════ Açıklanabilirlik (Explainability) ════════════════
+// Mevcut karar verilerinden (skor/dal/kalite/rank/BOA) insan-okunur bir
+// karar zinciri cümlesi üretir. Yeni bir hesaplama YAPMAZ — sadece zaten
+// var olan trade kolonlarını anlatıya çevirir.
+function explainTrade(t){
+  const parts=[];
+  const side=t.Yon==='LONG'?'LONG':'SHORT';
+  parts.push('<b>'+esc(t.Sembol)+'</b> '+side+' olarak skor <b>'+esc(t.EntryScore||t.Skor||'—')+'</b> ile değerlendirildi.');
+  const branchBits=[];
+  if(t.CoreScore) branchBits.push('Core Long: '+t.CoreScore);
+  if(t.ShortScore) branchBits.push('Short Surgeon: '+t.ShortScore);
+  if(t.CascadeScore) branchBits.push('Cascade Hunter: '+t.CascadeScore);
+  if(branchBits.length) parts.push('Dal oyları → '+branchBits.join(', ')+'.');
+  if(t.PresidentScore) parts.push('President nihai skor <b>'+t.PresidentScore+'</b> verip <b>'+esc(t.Label||'—')+'</b> etiketledi.');
+  else parts.push('President bu sinyali <b>'+esc(t.Label||'—')+'</b> etiketledi.');
+  if(t.QualityScore) parts.push('Quality Score '+t.QualityScore+' (boyut/güven katkısı).');
+  if(t.RankScore) parts.push('Aynı mumda Rank skoru '+t.RankScore+(t.RankCandidateCount?(' ('+t.RankCandidateCount+' aday arasından #'+(t.RankPosition||'?')+')'):'')+'.');
+  if(t.BOAFeedbackAdj&&parseFloat(t.BOAFeedbackAdj)!==0) parts.push('BOA feedback '+(parseFloat(t.BOAFeedbackAdj)>0?'+':'')+t.BOAFeedbackAdj+' puan katkı yaptı.');
+  if(t.PumpRisk=='1') parts.push('<span style="color:var(--yellow)">⚠ Pump/manipülasyon riski tespit edildi</span> — skor ve boyut otomatik küçültüldü (vol_ratio '+esc(t.PumpVolRatio||'?')+', fiyat değişimi %'+esc(t.PumpPriceChgPct||'?')+').');
+  parts.push('Sonuç: <b class="'+cls(t.Net_PnL)+'">'+money(t.Net_PnL)+'</b> ('+esc(t.Sebep||'—')+' ile kapandı, '+esc(t.BarsHeld||'?')+' mum tutuldu).');
+  return parts.join(' ');
+}
+function buildExplainCards(trades){
+  if(!trades||!trades.length) return '<div class="empty">Açıklanacak işlem yok</div>';
+  return trades.slice(0,150).map(t=>{
+    const chips=[];
+    if(t.Label) chips.push('<span class="chip">'+esc(t.Label)+'</span>');
+    if(t.Rejim) chips.push('<span class="chip">'+esc(t.Rejim)+'</span>');
+    if(t.DecisionID) chips.push('<span class="chip">'+esc(t.DecisionID)+'</span>');
+    return '<div class="narrcard"><div class="nhead"><span class="nsym">'+esc(t.Sembol)+'</span>'+
+      '<span class="pill '+(t.Yon==='LONG'?'long':'short')+'">'+esc(t.Yon)+'</span>'+
+      '<span class="'+cls(t.Net_PnL)+'" style="font-family:var(--mono);font-weight:700">'+money(t.Net_PnL)+'</span>'+
+      '<div class="chiprow" style="margin:0">'+chips.join('')+'</div></div>'+
+      '<div class="nbody">'+explainTrade(t)+'</div></div>';
+  }).join('');
 }
 
 // ════════════════ Walk-Forward ════════════════
@@ -1087,9 +1206,13 @@ async function loadWfResult(folder){if(!folder)return;_curWfFolder=folder;
     metricCard('Pozitif Ay',(s.Pozitif_Ay||0)+'/'+(s.Toplam_Ay||0),'neu'),
     metricCard('Ort. Aylık',money(s.Ort_Aylik_PnL),cls(s.Ort_Aylik_PnL))].join('');
   const m=res.monthly||[];drawBars($('wf_chart'),m.map(r=>r.Ay),m.map(r=>parseFloat(r.NetPnL)||0),{h:160});
-  $('wf_tbl').innerHTML=tbl(m,['Ay','Islem','WinRate','NetPnL','Getiri','BitisEquity']);
+  const wfCols=['Ay','Islem','WinRate','NetPnL','Getiri','BitisEquity'];
+  $('wf_tbl').innerHTML=m.length?('<table><thead><tr>'+wfCols.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+
+    m.map(r=>'<tr style="cursor:pointer" onclick="openSegmentAnalysis(\'wf\',\''+esc(folder)+'\',\''+esc(r.Ay)+'\')">'+
+      wfCols.map(c=>'<td class="'+(c==='NetPnL'?cls(r[c]):'')+'">'+esc(r[c])+'</td>').join('')+'</tr>').join('')+'</tbody></table>'):'<div class="empty">Veri yok</div>';
   $('wf_del').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
-    await call('delete_wf',folder.split(/[\\/]/).pop());loadWfHist();$('wf_res').style.display='none';$('wf_ph').style.display='block';};}
+    await call('delete_wf',folder.split(/[\\/]/).pop());loadWfHist();$('wf_res').style.display='none';$('wf_ph').style.display='block';};
+  $('wf_folder_btn').onclick=async()=>{await call('open_folder','wf',folder.split(/[\\/]/).pop());};}
 
 // ════════════════ Robustness ════════════════
 let _curRobFolder='';
@@ -1112,11 +1235,16 @@ async function loadRobResult(folder){if(!folder)return;_curRobFolder=folder;
     metricCard('Pozitif Hafta',(s.Pozitif_Hafta||0)+'/'+(s.Toplam_Hafta||0),'neu'),
     metricCard('Ort. Haftalık',money(s.Ort_Haftalik_PnL),cls(s.Ort_Haftalik_PnL))].join('');
   const wk=res.weekly||[];drawBars($('rob_chart'),wk.map(r=>r.Hafta),wk.map(r=>parseFloat(r.NetPnL)||0),{h:160});
-  $('rob_tbl').innerHTML=tbl(wk,['Hafta','Semboller','Islem','WinRate','NetPnL','Getiri']);
+  const robCols=['Hafta','Semboller','Islem','WinRate','NetPnL','Getiri'];
+  $('rob_tbl').innerHTML=wk.length?('<table><thead><tr>'+robCols.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+
+    wk.map(r=>'<tr style="cursor:pointer" onclick="openSegmentAnalysis(\'rob\',\''+esc(folder)+'\',\''+esc(r.Hafta)+'\')">'+
+      robCols.map(c=>'<td class="'+(c==='NetPnL'?cls(r[c]):'')+'">'+esc(r[c])+'</td>').join('')+'</tr>').join('')+'</tbody></table>'):'<div class="empty">Veri yok</div>';
   $('rob_del').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
-    await call('delete_rob',folder.split(/[\\/]/).pop());loadRobHist();$('rob_res').style.display='none';$('rob_ph').style.display='block';};}
+    await call('delete_rob',folder.split(/[\\/]/).pop());loadRobHist();$('rob_res').style.display='none';$('rob_ph').style.display='block';};
+  $('rob_folder_btn').onclick=async()=>{await call('open_folder','rob',folder.split(/[\\/]/).pop());};}
 
 // ════════════════ True WF ════════════════
+let _curTwfFolder='';
 async function loadTwfHist(){const h=await call('get_true_wf_history');$('twf_cnt').textContent=h?h.length:0;
   const b=$('twf_hist');if(!h||!h.length){b.innerHTML='<div class="empty">Geçmiş yok</div>';return;}
   b.innerHTML=h.map(m=>{const s=m.summary||{},f=m.folder||'',pnl=parseFloat(s.Toplam_OOS_PnL||0);
@@ -1127,7 +1255,7 @@ async function loadTwfHist(){const h=await call('get_true_wf_history');$('twf_cn
       <span class="ms2 b">${esc((s.Pozitif_Fold||0)+'/'+(s.Fold_Sayisi||0)+' pozitif')}</span></div></div>`;}).join('');}
 async function selTWF(el,f){document.querySelectorAll('#twf_hist .hcard').forEach(c=>c.classList.remove('sel'));
   el.classList.add('sel');await loadTwfResult(f);}
-async function loadTwfResult(folder){if(!folder)return;
+async function loadTwfResult(folder){if(!folder)return;_curTwfFolder=folder;
   const res=await call('get_true_wf_results',folder);if(!res||res.error||!Object.keys(res.summary||{}).length)return;
   $('twf_ph').style.display='none';$('twf_res').style.display='block';
   const s=res.summary;$('twf_rtitle').textContent=folder.split(/[\\/]/).pop();
@@ -1137,7 +1265,15 @@ async function loadTwfResult(folder){if(!folder)return;
     metricCard('Ort. Fold',money(s.Ort_Fold_PnL),cls(s.Ort_Fold_PnL)),
     metricCard('Train/Test/Roll',(s.Train_Gun||60)+'/'+(s.Test_Gun||30)+'/'+(s.Roll_Gun||30)+'g','neu')].join('');
   const f=res.folds||[];drawBars($('twf_chart'),f.map(r=>'F'+r.Fold),f.map(r=>parseFloat(r.OOS_NetPnL)||0),{h:160});
-  $('twf_tbl').innerHTML=tbl(f,['Fold','Train','Test','Secilen_Param','Train_PnL','OOS_Islem','OOS_WinRate','OOS_NetPnL','OOS_MaxDD']);}
+  $('twf_tbl').innerHTML=f.length?('<table><thead><tr>'+['Fold','Train','Test','Secilen_Param','Train_PnL','OOS_Islem','OOS_WinRate','OOS_NetPnL','OOS_MaxDD'].map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>'+
+    f.map(r=>'<tr style="cursor:pointer" onclick="openSegmentAnalysis(\'twf\',\''+esc(folder)+'\',\'fold'+esc(r.Fold)+'_test\')">'+
+      ['Fold','Train','Test','Secilen_Param','Train_PnL','OOS_Islem','OOS_WinRate','OOS_NetPnL','OOS_MaxDD'].map(c=>{
+        const v=r[c]; const cl=/OOS_NetPnL|Train_PnL/.test(c)?cls(v):'';
+        return '<td class="'+cl+'">'+esc(v)+'</td>';
+      }).join('')+'</tr>').join('')+'</tbody></table>'):'<div class="empty">Veri yok</div>';
+  $('twf_folder_btn').onclick=async()=>{await call('open_folder','twf',folder.split(/[\\/]/).pop());};
+  $('twf_del').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
+    await call('delete_true_wf',folder.split(/[\\/]/).pop());loadTwfHist();$('twf_res').style.display='none';$('twf_ph').style.display='block';};}
 
 // ════════════════ President ════════════════
 async function loadPresident(){
@@ -1240,6 +1376,10 @@ async function loadRankingBoa(){
     metricCard('BOA Path',boa.path?boa.path.split(/[\\/]/).pop():'—','neu')
   ].join('');
   $('rank_reason_w').innerHTML=tbl(rank.reason_rows||[],['cause','count']);
+  const lblRows=rank.label_rows||[];
+  const LBLORDER=['ATTACK','STRONG','NORMAL','SCOUT','WEAK','?'];
+  lblRows.sort((a,b)=>LBLORDER.indexOf(a.label)-LBLORDER.indexOf(b.label));
+  drawBars($('rank_label_chart'),lblRows.map(r=>r.label),lblRows.map(r=>r.count),{h:140});
   $('rank_latest_w').innerHTML=tbl(rank.latest_rows||[],['ts','symbol','cause','rank','side','score','quality_score','label','boa_adj','selected_min_rank_score']);
   $('boa_pos_w').innerHTML=tbl(boa.top_positive||[],['key','edge','count','tp_rate','sl_rate','avg_close']);
   $('boa_neg_w').innerHTML=tbl(boa.top_negative||[],['key','edge','count','tp_rate','sl_rate','avg_close']);
