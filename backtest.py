@@ -21,6 +21,7 @@ from market_regime import MarketRegimeDetector
 from symbol_manager import SymbolManager
 from adaptive_exit import classify_trade
 from block_outcome_analyzer import build_block_outcome, write_block_outcome_reports
+from pump_filter import compute_pump_risk
 
 # ─── President karar motoru (ortak pipeline) ──────────────────────────────────
 from president_runtime import PresidentRuntime
@@ -456,6 +457,17 @@ class Backtester:
         ts_sec = (ts_ms / 1000) if ts_ms else time.time()
         sentiment = "BEARISH" if regime == "BEARISH" else ("BULLISH" if regime in ("BULL", "TREND") else "NEUTRAL")
 
+        # V8.5.8 Pump/Manipülasyon Filtresi — SERT BLOK DEĞİL. Şüpheli ani
+        # hacim+fiyat patlaması tespit edilirse skor cezalandırılır ve
+        # (açılırsa) pozisyon boyutu küçültülür; sinyal engellenmez.
+        pump_info = compute_pump_risk(prices, vols, self.cfg)
+        if pump_info.get("is_pump"):
+            score = max(0.0, score - pump_info["score_penalty"])
+            self._log_filter("PUMP_RISK_SOFT", sym, score, ts_str, extra={
+                "vol_ratio": pump_info["vol_ratio"], "price_chg_pct": pump_info["price_chg_pct"],
+                "score_penalty": pump_info["score_penalty"], "size_mult": pump_info["size_mult"],
+            })
+
         # BOA feedback aynı testin geleceğini kullanmaz; sadece geçmiş/önceki hafıza feature'ıdır.
         # Side henüz kesinleşmediği için ilk etapta nötr verilir; President side seçtikten sonra packet.extra'da güncellenir.
         result = dict(result or {})
@@ -480,6 +492,7 @@ class Backtester:
                 "quality_score": float((packet.extra.get("quality_score_report") or {}).get("score", 50.0) or 50.0),
                 "symbol_mult": self.sym_mgr.size_multiplier(sym) if hasattr(self, "sym_mgr") else 1.0,
                 "boa_feedback": packet.extra.get("boa_feedback_report", {}),
+                "pump_context": pump_info,
             }
 
         open_votes_list = [v for v in packet.branch_votes.values() if v.action == Action.OPEN]
@@ -557,6 +570,7 @@ class Backtester:
                     "rank_position": candidates.index(cand) + 1,
                     "boa_feedback": cand.get("boa_feedback") or {},
                 },
+                pump_context=cand.get("pump_context"),
             )
             opened.append(sym)
             available -= 1
@@ -822,6 +836,15 @@ class Backtester:
         if price <= 0:
             return
 
+        # V8.5.8 Pump/Manipülasyon Filtresi — SERT BLOK DEĞİL (puan + boyut cezası).
+        pump_info = compute_pump_risk(prices, vols, self.cfg)
+        if pump_info.get("is_pump"):
+            score = max(0.0, score - pump_info["score_penalty"])
+            self._log_filter("PUMP_RISK_SOFT", sym, score, ts_str, extra={
+                "vol_ratio": pump_info["vol_ratio"], "price_chg_pct": pump_info["price_chg_pct"],
+                "score_penalty": pump_info["score_penalty"], "size_mult": pump_info["size_mult"],
+            })
+
         # ── KARAR: President (varsayilan) veya Legacy ──────────────────────
         if self.president_enabled and self.runtime:
             ts_sec = (ts_ms / 1000) if ts_ms else time.time()
@@ -838,7 +861,8 @@ class Backtester:
                                          branch_scores=branch_scores, htf_score=htf_sc,
                                          prices=prices, highs=highs, lows=lows, vols=vols,
                                          packet_extra=getattr(packet, "extra", {}),
-                                         score_components=(result.get("components", {}) or {}))
+                                         score_components=(result.get("components", {}) or {}),
+                                         pump_context=pump_info)
             else:
                 # Acik oy vardiysa ama President acmadiysa -> BOA blok adayi
                 open_votes_list = [v for v in packet.branch_votes.values() if v.action == Action.OPEN]
@@ -872,7 +896,7 @@ class Backtester:
                             ts_str, date_str, sl_pct, size_mult, label="",
                             decision_id="", branch_scores=None, htf_score=50.0,
                             prices=None, highs=None, lows=None, vols=None, packet_extra=None,
-                            score_components=None, rank_context=None):
+                            score_components=None, rank_context=None, pump_context=None):
         """Karar paketinden pozisyon ac (President veya Legacy ortak yolu)."""
         adsl = adaptive_sl_compute(regime=regime, atr_pct=atr_pct,
             base_score_threshold=self.score_long_open, base_atr_multiplier=self.atr_multiplier,
@@ -892,6 +916,10 @@ class Backtester:
         if ae.enabled and not ae.shadow_mode:
             size_mult *= float(ae.policy.size_mult or 1.0)
             trail = max(0.001, float(ae.policy.trail_step_pct) / 100.0)
+        # V8.5.8 Pump/Manipülasyon Filtresi — pozisyon boyutu küçültme (sert blok değil).
+        pump_context = pump_context or {}
+        if pump_context.get("is_pump"):
+            size_mult *= float(pump_context.get("size_mult", 1.0))
         mr = self.cfg.get("market_regime", {})
         regime_mult = 1.0
         if str(regime).upper() == "NEUTRAL":
@@ -928,6 +956,10 @@ class Backtester:
             "rank_position": (rank_context or {}).get("rank_position", ""),
             "rank_candidate_count": (rank_context or {}).get("candidate_count", ""),
             "boa_feedback_adj": ((rank_context or {}).get("boa_feedback", {}) or {}).get("adjustment", ""),
+            "pump_risk": int(bool(pump_context.get("is_pump"))),
+            "pump_vol_ratio": pump_context.get("vol_ratio", ""),
+            "pump_price_chg_pct": pump_context.get("price_chg_pct", ""),
+            "pump_score_penalty": pump_context.get("score_penalty", ""),
             "ae_class": ae.trade_class,
             "ae_policy": ae.policy_name,
             "ae_continuation_score": ae.continuation_score,
@@ -1001,6 +1033,10 @@ class Backtester:
             "RankPosition":  pos.get("rank_position", ""),
             "RankCandidateCount": pos.get("rank_candidate_count", ""),
             "BOAFeedbackAdj": pos.get("boa_feedback_adj", ""),
+            "PumpRisk":      pos.get("pump_risk", 0),
+            "PumpVolRatio":  pos.get("pump_vol_ratio", ""),
+            "PumpPriceChgPct": pos.get("pump_price_chg_pct", ""),
+            "PumpScorePenalty": pos.get("pump_score_penalty", ""),
             "BarsHeld":      pos.get("bars_held", 0),
             "TP1_Done":      int(pos.get("tp1_done", False)),
             "TP1_Progress_Reduced": int(pos.get("tp1_progress_reduced", False)),
@@ -1088,6 +1124,10 @@ class Backtester:
                 "RankPosition": pos.get("rank_position", ""),
                 "RankCandidateCount": pos.get("rank_candidate_count", ""),
                 "BOAFeedbackAdj": pos.get("boa_feedback_adj", ""),
+                "PumpRisk": pos.get("pump_risk", 0),
+                "PumpVolRatio": pos.get("pump_vol_ratio", ""),
+                "PumpPriceChgPct": pos.get("pump_price_chg_pct", ""),
+                "PumpScorePenalty": pos.get("pump_score_penalty", ""),
                 "BarsHeld": pos.get("bars_held",0),
                 "TP1_Done": int(pos.get("tp1_done",False)),
                 "TP1_Progress_Reduced": int(pos.get("tp1_progress_reduced",False)),
@@ -1565,7 +1605,36 @@ class Backtester:
                 w.writeheader(); w.writerows(rows)
 
 
+
 # ─── CLI Giris Noktasi ────────────────────────────────────────────────────────
+
+def resolve_president_execution_mode(cfg: dict, cli_pmode: str = "") -> tuple:
+    """
+    V8.5.9 FIX: Bu mantık önceden SADECE backtest.py'nin CLI __main__ blogunda
+    vardı. walk_forward.py / robustness_test.py / true_walk_forward.py
+    Backtester'ı doğrudan Python içinde instantiate ettiği için bu override
+    HİÇ uygulanmıyordu — config_online.yaml'daki statik president.shadow_mode
+    değeri olduğu gibi kullanılıyordu.
+    """
+    president_enabled = True
+    pmode = str(cli_pmode or "")
+    if not pmode:
+        _default_mode = str(cfg.get("backtest", {}).get("president_execution_mode", ""))
+        if _default_mode == "shadow":
+            pmode = "shadow"
+        elif _default_mode in ("simulated_active", "live", "active"):
+            pmode = "live"
+        elif _default_mode == "legacy":
+            pmode = "legacy"
+
+    if pmode == "shadow":
+        cfg.setdefault("president", {})["shadow_mode"] = True
+    elif pmode == "live":
+        cfg.setdefault("president", {})["shadow_mode"] = False
+    elif pmode == "legacy":
+        president_enabled = False
+    return president_enabled, pmode
+
 def main():
     parser = argparse.ArgumentParser(description="TRBOT V8 Backtest")
     parser.add_argument("--days",     type=int, default=30)
@@ -1588,7 +1657,7 @@ def main():
     # backtest.president_execution_mode okunur ve varsayılan olarak uygulanır.
     # Bu, dokümantasyonda (HYBRID_CONFIG_NOTES.md) bahsedilen ama önceden hiç
     # okunmayan alanı gerçek bir etkiye kavuşturur — CLI hâlâ her zaman üstün.
-    president_enabled = True
+    president_enabled, pmode = resolve_president_execution_mode(cfg, args.president_mode)
     pmode = args.president_mode
     if not pmode:
         _default_mode = str(cfg.get("backtest", {}).get("president_execution_mode", ""))
