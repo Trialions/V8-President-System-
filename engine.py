@@ -11,6 +11,7 @@ from strategy_core import score_symbol
 from market_regime import MarketRegimeDetector
 from symbol_manager import SymbolManager
 from adaptive_exit import classify_trade
+from pump_filter import compute_pump_risk
 from logger import log_info, log_error, log_event
 
 # President sistemi — TEK ortak pipeline (backtest ile parité)
@@ -611,6 +612,15 @@ class TradeEngine:
                     return
 
         # ── PRESIDENT KARAR — filtreler geçtikten sonra ──────────────
+        # V8.5.8 Pump/Manipülasyon Filtresi — SERT BLOK DEĞİL (puan + boyut
+        # cezası). backtest.py ile BİREBİR AYNI compute_pump_risk() çağrılır.
+        pump_info = compute_pump_risk(prices, volumes, self.cfg)
+        if pump_info.get("is_pump"):
+            score = max(0.0, score - pump_info["score_penalty"])
+            self._fire("OPEN_PENALTY", cause="PUMP_RISK_SOFT", symbol=symbol,
+                      vol_ratio=pump_info["vol_ratio"], price_chg_pct=pump_info["price_chg_pct"],
+                      score_penalty=pump_info["score_penalty"], size_mult=pump_info["size_mult"])
+
         candle_ts = float(self.last_close_time.get(symbol, 0)) / 1000 if self.last_close_time.get(symbol, 0) else time.time()
         packet = self.runtime.evaluate(
             symbol, candle_ts, score, result, regime, htf_sc, sentiment,
@@ -635,13 +645,13 @@ class TradeEngine:
 
         self._open(symbol, price, packet.side.value, result,
                    size_mult=packet.size_mult, sl_pct_override=packet.sl_pct,
-                   htf_score=htf_sc, packet=packet)
+                   htf_score=htf_sc, packet=packet, pump_context=pump_info)
         # Gerçek pozisyon açıldıktan SONRA risk governor'a bildir
         self.runtime.confirm_open(packet.side.value)
 
     def _open(self, symbol: str, price: float, side: str, result: dict,
               size_mult: float = 1.0, sl_pct_override: float = None,
-              htf_score: float = 50.0, packet=None):
+              htf_score: float = 50.0, packet=None, pump_context: dict = None):
         atr_pct_val = result.get("components", {}).get("atr_pct", 0.0)
         regime      = self.regime.get_regime()
 
@@ -676,6 +686,10 @@ class TradeEngine:
         if ae.enabled and not ae.shadow_mode:
             size_mult *= float(ae.policy.size_mult or 1.0)
             pos_trail = max(0.001, float(ae.policy.trail_step_pct) / 100.0)
+        # V8.5.8 Pump/Manipülasyon Filtresi — pozisyon boyutu küçültme (sert blok değil).
+        pump_context = pump_context or {}
+        if pump_context.get("is_pump"):
+            size_mult *= float(pump_context.get("size_mult", 1.0))
         mr = self.cfg.get("market_regime", {})
         regime_mult = 1.0
         if str(regime).upper() == "NEUTRAL":
@@ -718,6 +732,10 @@ class TradeEngine:
             "label": getattr(packet, "label", "") if packet else "",
             "quality_score_report": (getattr(packet, "extra", {}) or {}).get("quality_score_report", {}) if packet else {},
             "adaptive_risk_report": (getattr(packet, "extra", {}) or {}).get("adaptive_risk_report", {}) if packet else {},
+            "pump_risk": int(bool(pump_context.get("is_pump"))),
+            "pump_vol_ratio": pump_context.get("vol_ratio", ""),
+            "pump_price_chg_pct": pump_context.get("price_chg_pct", ""),
+            "pump_score_penalty": pump_context.get("score_penalty", ""),
         }
         self.trade_count_today += 1
         self.runtime.on_open(symbol, side, price, final_sl_pct)  # FIX: side artık geçiriliyor
@@ -726,7 +744,8 @@ class TradeEngine:
         self._fire("OPEN", symbol=symbol, side=side, entry=price,
                    score=result.get("final_score", 0.0), regime=regime,
                    ae_class=ae.trade_class, ae_policy=ae.policy_name,
-                   decision_id=(getattr(packet, "decision_id", "") if packet else ""))
+                   decision_id=(getattr(packet, "decision_id", "") if packet else ""),
+                   pump_risk=int(bool(pump_context.get("is_pump"))))
 
     def _resolve_pending_sl(self, symbol: str, price: float):
         """SL'den ~4h sonra verdict hesaplayip Short Surgeon'u besler."""
