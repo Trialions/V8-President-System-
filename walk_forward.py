@@ -13,6 +13,7 @@ from typing import Dict, List
 
 import yaml
 
+from backtest import Backtester, _fetch_candles, _load_symbols, resolve_president_execution_mode
 from backtest import Backtester, _fetch_candles, _load_symbols
 from weekly_symbol_universe import select_universe_for_window, write_universe_history
 
@@ -141,6 +142,7 @@ def main():
     args = parser.parse_args()
 
     cfg     = _load_cfg(args.config)
+    resolve_president_execution_mode(cfg)
     symbols = _load_symbols(args.top)
     run_walkforward(cfg, symbols, args.start, args.end,
                     args.interval, args.out)
