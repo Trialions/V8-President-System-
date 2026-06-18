@@ -114,6 +114,20 @@ vol_position_filter:
   enabled: false
   high_atr_threshold: 2.5
   high_atr_size_mult: 0.5
+# V8.5.8 Pump/Manipülasyon Anomali Filtresi — SERT BLOK DEĞİL.
+# Son price_lookback_bars mumda hacim patlaması (vol_spike_mult) VE fiyat
+# sıçraması (price_spike_pct) birlikte görülürse: skor score_penalty kadar
+# düşürülür, pozisyon açılırsa boyutu size_mult ile küçültülür. Sinyal
+# tamamen engellenmez — backtest.py ve engine.py AYNI pump_filter.py
+# fonksiyonunu çağırır (parity).
+pump_filter:
+  enabled: true
+  price_lookback_bars: 3
+  base_window_bars: 20
+  vol_spike_mult: 4.0
+  price_spike_pct: 8.0
+  score_penalty: 8.0
+  size_mult: 0.5
 symbol_blacklist:
   enabled: false
   symbols: []
@@ -167,6 +181,19 @@ president:
     strong_min_score: 84.0
     normal_min_score: 72.0
     core_only_max_label: NORMAL
+    # V8.5.8 çok faktörlü label kalibrasyonu — core-only sinyaller artık
+    # körü körüne core_only_max_label'e sabitlenmiyor. Quality Score
+    # core_only_quality_min'i geçerse VE rejim "choppy" listede değilse
+    # STRONG'a çıkabilir. Aksi halde eski korumacı davranış (NORMAL) kalır.
+    core_only_quality_min: 65.0
+    core_only_choppy_regimes:
+    - KONSOL
+    - CHOP
+    - RANGE
+    - BEARISH
+    # NORMAL bandındaki sinyaller bu kalite eşiğinin altındaysa SCOUT'a
+    # düşürülür (düşük kaliteli "orta" sinyal artık NORMAL boyutuyla açılmaz).
+    low_quality_demote_below: 35.0
     core_only_size_mult: 0.65
     normal_size_mult: 0.75
     strong_size_mult: 0.9
