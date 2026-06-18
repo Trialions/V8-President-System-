@@ -162,6 +162,7 @@ def main():
     ap.add_argument("--config", default="config_online.yaml")
     a = ap.parse_args()
     cfg = _load_cfg(a.config)
+    resolve_president_execution_mode(cfg)
     syms = _load_symbols(a.top)
     run_true_walkforward(cfg, syms, a.start, a.end, a.interval,
                          a.train_days, a.test_days, a.roll_days, a.out)
