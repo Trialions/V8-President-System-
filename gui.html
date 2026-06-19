@@ -353,8 +353,8 @@ canvas{width:100%;display:block}
         Soldan test seç veya <b>+ Yeni Backtest</b> başlat.
       </div>
       <div id="bt_res" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div><div class="ptitle" id="bt_rtitle" style="font-size:16px">—</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div><div class="ptitle" id="bt_rtitle" style="font-size:15px">—</div>
                <div style="font-size:11px;color:var(--muted)" id="bt_rmeta"></div></div>
           <div style="display:flex;gap:8px">
             <button class="sm ghost" id="bt_folder_btn" title="Klasörü aç">📁</button>
@@ -362,18 +362,6 @@ canvas{width:100%;display:block}
             <button class="sm primary" onclick="openAnalysis('bt')">◁▷ Analiz Aç</button>
           </div>
         </div>
-        <div class="grid g4" id="bt_metrics" style="margin-bottom:12px"></div>
-        <div class="grid g2" style="margin-bottom:12px">
-          <div class="card"><div class="ch">Config Snapshot</div><div id="bt_snap"></div></div>
-          <div class="card">
-            <div class="ch">Kapanış Nedenleri</div>
-            <div class="donutwrap">
-              <canvas id="bt_donut" width="150" height="150" style="width:150px;height:150px"></canvas>
-              <div class="legend" id="bt_legend"></div>
-            </div>
-          </div>
-        </div>
-        <div class="card"><div class="ch">Equity Eğrisi</div><canvas id="bt_chart" height="175"></canvas></div>
       </div>
     </div>
   </div>
@@ -625,13 +613,15 @@ canvas{width:100%;display:block}
         </div>
       </div>
       <div class="card"><div class="ch">Equity Eğrisi</div><canvas id="ap_chart" height="170"></canvas></div>
-      <div class="card" style="margin-top:12px" id="ap_ozet_yorum_card">
+      <div class="card" style="margin-top:12px">
         <div class="ch">Otomatik Yorum</div>
         <div class="logbox" id="ap_ozet_yorum" style="height:auto;min-height:60px"></div>
       </div>
     </div>
     <div class="spane" id="ap-islem">
       <div class="hint">Net_PnL = Final_PnL + TP1_PnL + TP1_Progress_PnL − Giriş_Komisyon. <b>PresidentScore</b> kararın nihai skoru, <b>RankScore</b> aynı mumdaki adaylar arası sıralama skoru, <b>BOAFeedbackAdj</b> geçmiş blok analizinden gelen küçük düzeltmedir.</div>
+      <div id="ap_islem_charts" style="margin-bottom:8px"></div>
+      <div class="card" style="margin-bottom:8px"><div class="ch">Otomatik Yorum</div><div class="logbox" id="ap_islem_yorum" style="height:auto;min-height:40px"></div></div>
       <div class="tw" id="ap_trades_w" style="max-height:500px"></div>
     </div>
     <div class="spane" id="ap-boa">
@@ -644,12 +634,19 @@ canvas{width:100%;display:block}
       <div class="spane active" id="boa-exit"><div class="tw" id="ap_boa_w"></div></div>
       <div class="spane" id="boa-reason">
         <div class="hint"><b>Gereksiz Engel</b>: filtre blokladı, fiyat kazandı (kaçırılmış fırsat). <b>Doğru Engel</b>: filtre korudu (zarar engellendi). Gereksiz_Pct yüksekse o filtre/sembol/rejimde fazla katı davranılıyor olabilir.</div>
+        <div id="ap_boa_charts" style="margin-bottom:8px"></div>
+        <div class="card" style="margin-bottom:8px"><div class="ch">Otomatik Yorum</div><div class="logbox" id="ap_boa_yorum" style="height:auto;min-height:40px"></div></div>
         <div class="tw" id="ap_boa_reason_w"></div>
       </div>
       <div class="spane" id="boa-symbol"><div class="tw" id="ap_boa_sym_w"></div></div>
       <div class="spane" id="boa-regime"><div class="tw" id="ap_boa_reg_w"></div></div>
     </div>
-    <div class="spane" id="ap-filtre"><div class="tw" id="ap_filtre_w" style="max-height:500px"></div></div>
+    <div class="spane" id="ap-filtre">
+      <div class="hint">Tüm blok/uyarı olayları. PUMP_RISK_SOFT = pump filtresi tetiklendi (engelleme yok, sadece skor/boyut cezası). RANK_* = aynı-mum sıralama kararları.</div>
+      <div id="ap_filtre_charts" style="margin-bottom:8px"></div>
+      <div class="card" style="margin-bottom:8px"><div class="ch">Otomatik Yorum</div><div class="logbox" id="ap_filtre_yorum" style="height:auto;min-height:40px"></div></div>
+      <div class="tw" id="ap_filtre_w" style="max-height:500px"></div>
+    </div>
     <div class="spane" id="ap-ranking">
       <div class="hint">Aynı candle içinde seçilen ve reddedilen adaylar. <b>RANK_SELECTED</b> açılanları, <b>RANK_REJECTED_*</b> seçilmeyenleri (sebebiyle birlikte) gösterir. Daha fazla aday → daha seçici giriş anlamına gelir.</div>
       <div class="grid g2" style="margin-bottom:12px">
@@ -658,7 +655,9 @@ canvas{width:100%;display:block}
       </div>
     </div>
     <div class="spane" id="ap-president">
-      <div class="hint">Bu test sırasında President'ın verdiği kararlar (sadece bu koşu). Candle zamanı kullanılır. <b>Açıklamalı Görünüm</b> sekmesi, açılan her trade için karar zincirini düz cümle olarak özetler.</div>
+      <div class="hint">Bu test sırasında President'ın verdiği kararlar (sadece bu koşu). <b>Açıklamalı Görünüm</b> sekmesi her trade için karar zincirini düz cümleye çevirir.</div>
+      <div id="ap_pres_charts" style="margin-bottom:8px"></div>
+      <div class="card" style="margin-bottom:8px"><div class="ch">Otomatik Yorum</div><div class="logbox" id="ap_pres_yorum" style="height:auto;min-height:40px"></div></div>
       <div class="stabs">
         <div class="stab active" data-sub="pres-d2">Kararlar</div>
         <div class="stab" data-sub="pres-v2">Dal Oyları</div>
@@ -668,7 +667,11 @@ canvas{width:100%;display:block}
       <div class="spane" id="pres-v2"><div class="tw" id="ap_pres_votes_w" style="max-height:480px"></div></div>
       <div class="spane" id="pres-exp"><div id="ap_pres_explain_w"></div></div>
     </div>
-    <div class="spane" id="ap-ghost"><div class="tw" id="ap_ghost_w" style="max-height:500px"></div></div>
+    <div class="spane" id="ap-ghost">
+      <div class="hint">Ghost sinyaller: "açılsaydı ne olurdu" simülasyonu. Hipotetik PnL yüksekse sistem fırsatları kaçırıyor olabilir.</div>
+      <div class="card" style="margin-bottom:8px"><div class="ch">Otomatik Yorum</div><div class="logbox" id="ap_ghost_yorum" style="height:auto;min-height:40px"></div></div>
+      <div class="tw" id="ap_ghost_w" style="max-height:500px"></div>
+    </div>
   </div>
 </div>
 
@@ -784,7 +787,42 @@ function drawBars(canvas,labels,values,opts){
 }
 
 const DCOLS={TP:'#2ecc71',SL:'#e74c3c',Trail:'#4f8ef7',MaxHold:'#f0b429',
-             ScoreClose:'#9b59b6',EndOfTest:'#404e65',ForceClose:'#404e65',TP1:'#2dd4bf'};
+             ScoreClose:'#9b59b6',EndOfTest:'#404e65',ForceClose:'#404e65',TP1:'#2dd4bf',
+             EarlyNoTP1:'#f0b429',
+             ATTACK:'#1D9E75',STRONG:'#378ADD',NORMAL:'#EF9F27',SCOUT:'#888780',WEAK:'#E24B4A',
+             LONG:'#1D9E75',SHORT:'#E24B4A',
+             TREND:'#1D9E75',BULL:'#2ecc71',NEUTRAL:'#378ADD',KONSOL:'#E24B4A',BEARISH:'#c0392b',CHOP:'#EF9F27',RANGE:'#f0b429',
+             'Doğru Engel':'#1D9E75','Gereksiz Engel':'#E24B4A'};
+
+const _AUTO_PALETTE=['#378ADD','#EF9F27','#1D9E75','#9b59b6','#E24B4A','#2dd4bf','#f0b429','#e67e22','#16a085','#8e44ad','#2980b9','#27ae60'];
+function _dcol(key,idx){return DCOLS[key]||_AUTO_PALETTE[idx%_AUTO_PALETTE.length];}
+
+function drawInlineDonut(containerId,data,sz){
+  sz=sz||110;
+  const el=$(containerId); if(!el) return;
+  const ents=Object.entries(data).filter(([,v])=>v>0);
+  const total=ents.reduce((a,[,v])=>a+v,0);
+  if(!total){el.innerHTML='<div class="empty" style="font-size:10px">Veri yok</div>';return;}
+  const id='idc_'+containerId+'_cv';
+  const legHtml=ents.map(([k,v],i)=>
+    '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px;font-size:10px;color:var(--muted)">'+
+    '<span style="width:8px;height:8px;border-radius:50%;background:'+_dcol(k,i)+';flex-shrink:0"></span>'+
+    '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px" title="'+esc(k)+'">'+esc(k)+'</span>'+
+    '<span style="margin-left:auto;font-family:var(--mono);color:var(--text);padding-left:6px">'+v+'</span></div>').join('');
+  el.innerHTML='<div style="display:flex;align-items:center;gap:12px">'+
+    '<canvas id="'+id+'" width="'+sz+'" height="'+sz+'" style="width:'+sz+'px;height:'+sz+'px;flex-shrink:0"></canvas>'+
+    '<div style="flex:1;min-width:0">'+legHtml+'</div></div>';
+  const canvas=$(id); if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=sz*dpr; canvas.height=sz*dpr; ctx.scale(dpr,dpr); ctx.clearRect(0,0,sz,sz);
+  let ang=-Math.PI/2; const cx=sz/2,cy=sz/2,rO=sz*0.46,rI=sz*0.28;
+  ents.forEach(([k,v],i)=>{
+    const a2=ang+(v/total)*Math.PI*2;
+    ctx.beginPath();ctx.arc(cx,cy,rO,ang,a2);ctx.arc(cx,cy,rI,a2,ang,true);ctx.closePath();
+    ctx.fillStyle=_dcol(k,i); ctx.fill(); ang=a2;
+  });
+}
 let _tipEl=null;
 function drawDonut(canvas,legEl,data,opts){
   opts=opts||{}; const ctx=canvas.getContext('2d');
@@ -1007,29 +1045,10 @@ async function loadBtResult(folder){
   const s=res.summary||{},c=res.config||{};
   $('bt_rtitle').textContent=folder.split(/[\\/]/).pop()||'Sonuç';
   $('bt_rmeta').textContent=(c.interval||'1h')+' · '+(c.days||'?')+' gün · '+(c.top||'?')+' sembol · '+(s.President_Enabled=='1'?'President':'Legacy');
-  $('bt_metrics').innerHTML=[
-    metricCard('Net PnL',money(s.Net_PnL_USD),cls(s.Net_PnL_USD)),
-    metricCard('Win Rate',s.Kazanma_Orani||'—','neu'),
-    metricCard('Max DD',s.Max_DD_Pct||'—','neg'),
-    metricCard('Sharpe',s.Sharpe||'—',parseFloat(s.Sharpe)>=0?'neu':'neg'),
-  ].join('');
-  // snapshot
-  const risk=c.risk||{},thr=c.thresholds||{};
-  const get=k=>(thr[k]!==undefined?thr[k]:(risk[k]!==undefined?risk[k]:'—'));
-  $('bt_snap').innerHTML=[['score_long_open',get('score_long_open')],['hard_stop_pct',get('hard_stop_pct')+'%'],
-    ['take_profit_min_pct',get('take_profit_min_pct')+'%'],['trailing_step_pct',get('trailing_step_pct')+'%'],
-    ['atr_multiplier',get('atr_multiplier')],['min_profit_close_pct',get('min_profit_close_pct')+'%']
-  ].map(([k,v])=>'<div class="snr"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>').join('');
-  // donut
-  const donut={};Object.keys(s).forEach(k=>{const mt=k.match(/^Exit_(.+)_Sayi$/);if(mt&&s[k]>0)donut[mt[1]]=parseInt(s[k]);});
-  drawDonut($('bt_donut'),$('bt_legend'),donut,{sz:150});
-  // equity
-  drawLine($('bt_chart'),(res.equity||[]).map(p=>({v:p.v})),{h:175});
-  // del button
   $('bt_del_btn').onclick=async()=>{if(!confirm(folder+' silinsin mi?'))return;
     await call('delete_backtest',folder.split(/[\\/]/).pop());loadBtHist();$('bt_res').style.display='none';$('bt_ph').style.display='block';};
-  // folder button (V8.5.8 — önceden bağlı değildi)
   $('bt_folder_btn').onclick=async()=>{await call('open_folder','bt',folder.split(/[\\/]/).pop());};
+  openAnalysis('bt');
 }
 
 // ════════════════ Analiz paneli (V8.5.8: inline, popup değil) ════════════════
@@ -1073,7 +1092,8 @@ async function loadAnalysis(mode,folder){
   const MLBL={bt:'Backtest',wf:'Walk-Forward',rob:'Robustluk',twf:'Gerçek WF (OOS)'};
   $('ap_title').textContent=folder.split(/[\\/]/).pop()||'Analiz';
   $('ap_meta').textContent=(MLBL[mode]||mode)+' · '+(c.interval||'1h');
-  // özet
+
+  // ── Özet metrikleri ──────────────────────────────────────────────
   $('ap_ozet_metrics').innerHTML=[
     metricCard('Net PnL',money(pnl),cls(pnl)),
     metricCard('Win Rate',s.Kazanma_Orani||'—','neu'),
@@ -1082,52 +1102,157 @@ async function loadAnalysis(mode,folder){
     metricCard('İşlem Sayısı',s.Toplam_Islem||'—','neu'),
     metricCard('Bloklanan',s.Bloklanan_Sinyal||'—','neu'),
   ].join('');
+
   // snap
   const risk=c.risk||{},thr=c.thresholds||{};
   const get=k=>(thr[k]!==undefined?thr[k]:(risk[k]!==undefined?risk[k]:'—'));
   $('ap_snap').innerHTML=[['score_long_open',get('score_long_open')],['hard_stop_pct',get('hard_stop_pct')+'%'],
     ['take_profit_min_pct',get('take_profit_min_pct')+'%'],['trailing_step_pct',get('trailing_step_pct')+'%'],
   ].map(([k,v])=>'<div class="snr"><span class="k">'+esc(k)+'</span><span class="v">'+esc(v)+'</span></div>').join('');
+
   // donut
   const donut={};Object.keys(s).forEach(k=>{const mt=k.match(/^Exit_(.+)_Sayi$/);if(mt&&s[k]>0)donut[mt[1]]=parseInt(s[k]);});
   drawDonut($('ap_donut'),$('ap_legend'),donut,{sz:140});
-  // equity
   if(res.equity&&res.equity.length) drawLine($('ap_chart'),res.equity.map(p=>({v:p.v})),{h:170});
-  // otomatik yorum (deterministik, kısa)
+
+  // ── GELİŞMİŞ otomatik yorum ──────────────────────────────────────
+  const trades=res.trades||[];
   const topReason=Object.keys(donut).sort((a,b)=>donut[b]-donut[a])[0];
-  const yorum=$('ap_ozet_yorum');
-  if(yorum){
-    const wr=parseFloat(s.Kazanma_Orani)||0, dd=s.Max_DD_Pct||'—', sh=parseFloat(s.Sharpe)||0;
-    let txt=(pnl>=0?'Bu koşu pozitif sonuçla kapandı: ':'Bu koşu negatif sonuçla kapandı: ')+money(pnl)+' net PnL, '+
-      (s.Kazanma_Orani||'—')+' win rate, '+dd+' max düşüş, Sharpe '+sh.toFixed(2)+'.';
-    if(topReason) txt+=' En sık kapanış nedeni: '+topReason+' ('+donut[topReason]+' işlem).';
-    if(wr>0&&wr<40) txt+=' Win rate düşük — TP/SL oranı veya giriş filtreleri gözden geçirilmeli.';
-    if(parseFloat(dd)>5) txt+=' Max DD %5 üzerinde — risk boyutlandırması dikkatle izlenmeli.';
-    yorum.textContent=txt;
+  const wr=parseFloat(s.Kazanma_Orani)||0;
+  const dd=parseFloat(s.Max_DD_Pct)||0;
+  const sh=parseFloat(s.Sharpe)||0;
+  const nTrades=parseInt(s.Toplam_Islem)||trades.length;
+  const rejimCnt={};
+  trades.forEach(t=>{const r=t.Rejim||'?'; rejimCnt[r]=(rejimCnt[r]||0)+1;});
+  const topRejim=Object.keys(rejimCnt).sort((a,b)=>rejimCnt[b]-rejimCnt[a])[0]||'?';
+  const topRejimPct=nTrades>0?Math.round((rejimCnt[topRejim]||0)/nTrades*100):0;
+  const negRejimleri=['KONSOL','CHOP','RANGE','BEARISH'];
+  const negRejimIslem=negRejimleri.reduce((a,r)=>a+(rejimCnt[r]||0),0);
+  const negRejimPct=nTrades>0?Math.round(negRejimIslem/nTrades*100):0;
+  const yorumEl=$('ap_ozet_yorum');
+  if(yorumEl){
+    let txt=pnl>=0?'Bu koşu pozitif sonuçla kapandı: ':'Bu koşu negatif sonuçla kapandı: ';
+    txt+=money(pnl)+' net PnL, %'+wr.toFixed(1)+' win rate, %'+dd.toFixed(2)+' max düşüş, Sharpe '+sh.toFixed(2)+'.';
+    if(topReason) txt+=' En sık kapanış: '+topReason+' ('+donut[topReason]+' işlem).';
+    if(negRejimPct>50) txt+=' İşlemlerin %'+negRejimPct+'\'i KONSOL/BEARISH rejiminde — sistemin yapısal olarak zayıf olduğu dönem ağır basmış.';
+    if(wr>0&&wr<40) txt+=' Win rate %40 altında — score_long_open eşiği ('+get('score_long_open')+') yükseltilmesi veya KONSOL\'da boyut azaltılması değerlendirilebilir.';
+    else if(wr>=55) txt+=' Win rate güçlü (%'+wr.toFixed(1)+') — sistem bu dönemde sinyallerini doğru seçmiş.';
+    if(dd>5) txt+=' Max DD %5 üzerinde — risk boyutlandırması dikkatle izlenmeli.';
+    if(sh>0.5) txt+=' Sharpe iyi ('+sh.toFixed(2)+') — risk/getiri dengesi pozitif.';
+    else if(sh<-0.5) txt+=' Sharpe negatif ('+sh.toFixed(2)+') — getiri volatiliteye oranla yetersiz.';
+    yorumEl.textContent=txt;
   }
-  // trades
-  $('ap_trades_w').innerHTML=tbl(res.trades,['Sembol','Yon','Giris','Cikis','GirisFiyati','CikisFiyati','KarPct','Final_PnL','TP1_PnL','Net_PnL','Giris_Komisyon','Cikis_Komisyon','Sebep','Skor','Rejim','Label','PresidentScore','RankScore','BOAFeedbackAdj','PumpRisk','BarsHeld','DecisionID','CoreScore','ShortScore','CascadeScore','QualityScore']);
-  // BOA
+
+  // ── İşlem Detayları — grafikler + otomatik yorum ─────────────────
+  const labelCnt={},dirCnt={LONG:0,SHORT:0};
+  trades.forEach(t=>{
+    const l=t.Label||'?'; labelCnt[l]=(labelCnt[l]||0)+1;
+    if(t.Yon==='LONG') dirCnt.LONG++; else if(t.Yon==='SHORT') dirCnt.SHORT++;
+  });
+  const maxLbl=Math.max(1,...Object.values(labelCnt));
+  const maxRej=Math.max(1,...Object.values(rejimCnt));
+  $('ap_islem_charts').innerHTML=
+    '<div class="grid g2" style="margin-bottom:8px">'+
+      '<div class="card"><div class="ch">Label Dağılımı</div><div id="idc_lbl"></div></div>'+
+      '<div class="card"><div class="ch">Rejim Dağılımı</div><div id="idc_rej"></div></div>'+
+    '</div>'+
+    '<div class="card" style="margin-bottom:8px"><div class="ch">Yön Dağılımı</div><div id="idc_yon"></div></div>';
+  drawInlineDonut('idc_lbl',Object.fromEntries(['ATTACK','STRONG','NORMAL','SCOUT','WEAK'].filter(l=>labelCnt[l]).map(l=>[l,labelCnt[l]])));
+  drawInlineDonut('idc_rej',Object.fromEntries(Object.entries(rejimCnt).sort((a,b)=>b[1]-a[1]).slice(0,6)));
+  drawInlineDonut('idc_yon',Object.fromEntries(Object.entries(dirCnt).filter(([,v])=>v>0)));
+
+  const domLabel=Object.keys(labelCnt).sort((a,b)=>labelCnt[b]-labelCnt[a])[0]||'?';
+  const domLabelPct=nTrades>0?Math.round((labelCnt[domLabel]||0)/nTrades*100):0;
+  let islemYorum='';
+  islemYorum+=nTrades+' işlem. Label dağılımı: '+domLabel+' dominant (%'+domLabelPct+').';
+  if(domLabelPct>85&&domLabel==='NORMAL') islemYorum+=' NORMAL\'e aşırı yığılma — V8.5.8 label kalibrasyonu (core_only_quality_min) etkisi henüz sınırlı.';
+  if(negRejimPct>50) islemYorum+=' KONSOL/BEARISH ağırlıklı dönem (%'+negRejimPct+') — yapısal kayıp beklenir.';
+  if(dirCnt.SHORT>0) islemYorum+=' '+dirCnt.SHORT+' SHORT pozisyon açılmış — geçmiş deneyimlere göre dikkatli izlenmeli.';
+  $('ap_islem_yorum').textContent=islemYorum;
+
+  $('ap_trades_w').innerHTML=tbl(trades,['Sembol','Yon','Giris','Cikis','GirisFiyati','CikisFiyati','KarPct','Final_PnL','TP1_PnL','TP1_Progress_PnL','Net_PnL','Giris_Komisyon','Cikis_Komisyon','Sebep','Skor','Rejim','Label','AE_Class','AE_Policy','PresidentScore','RankScore','RankPosition','RankCandidateCount','BOAFeedbackAdj','PumpRisk','PumpVolRatio','PumpPriceChgPct','PumpScorePenalty','BarsHeld','DecisionID','CoreScore','ShortScore','CascadeScore','QualityScore']);
+
+  // ── BOA grafikleri + otomatik yorum ──────────────────────────────
+  const boaReason=res.boa_reason||[];
+  const totalGereksiz=boaReason.reduce((a,r)=>a+(parseInt(r.Gereksiz_Engel)||0),0);
+  const totalDogru=boaReason.reduce((a,r)=>a+(parseInt(r.Dogru_Engel)||0),0);
+  const totalBlok=totalGereksiz+totalDogru;
+  $('ap_boa_charts').innerHTML=
+    '<div class="grid g2" style="margin-bottom:8px">'+
+      '<div class="card"><div class="ch">Doğru/Gereksiz Engel</div><div id="idc_boa_type"></div></div>'+
+      '<div class="card"><div class="ch">Filtre Bazlı Blok</div><div id="idc_boa_reason"></div></div>'+
+    '</div>';
+  drawInlineDonut('idc_boa_type',{'Doğru Engel':totalDogru,'Gereksiz Engel':totalGereksiz});
+  const boaReasonData={};
+  boaReason.forEach(r=>{if(r.Sebep&&parseInt(r.Blok_Sayisi)>0) boaReasonData[r.Sebep]=parseInt(r.Blok_Sayisi);});
+  drawInlineDonut('idc_boa_reason',boaReasonData);
+  const topBoaSebep=boaReason.sort((a,b)=>(parseFloat(b.Gereksiz_Pct)||0)-(parseFloat(a.Gereksiz_Pct)||0))[0];
+  let boaYorum=totalBlok>0?'Toplam '+totalBlok+' bloklanan sinyal: %'+Math.round(totalGereksiz/totalBlok*100)+' gereksiz engel, %'+Math.round(totalDogru/totalBlok*100)+' doğru engel.':'BOA verisi yok.';
+  if(topBoaSebep&&parseFloat(topBoaSebep.Gereksiz_Pct)>50) boaYorum+=' En yüksek gereksiz engel oranı: '+topBoaSebep.Sebep+' (%'+topBoaSebep.Gereksiz_Pct+') — bu filtrenin eşiği gözden geçirilebilir.';
+  $('ap_boa_yorum').textContent=boaYorum;
   $('ap_boa_w').innerHTML=tbl(res.boa,['Sebep','Sayi','WinRate','ToplamPnL','OrtPnL']);
   $('ap_boa_reason_w').innerHTML=tbl(res.boa_reason,['Sebep','Blok_Sayisi','Gereksiz_Engel','Dogru_Engel','Gereksiz_Pct','Ort_Hipotetik_PnL']);
   $('ap_boa_sym_w').innerHTML=tbl(res.boa_symbol,['Sembol','Blok_Sayisi','Gereksiz_Engel','Dogru_Engel','Gereksiz_Pct','Ort_Hipotetik_PnL']);
   $('ap_boa_reg_w').innerHTML=tbl(res.boa_regime,['Rejim','Blok_Sayisi','Gereksiz_Engel','Dogru_Engel','Gereksiz_Pct','Ort_Hipotetik_PnL']);
-  // filtre
-  $('ap_filtre_w').innerHTML=tbl(res.filter_events);
-  // ranking
-  const rr=(res.filter_events||[]).filter(r=>String(r.cause||'').startsWith('RANK_'));
-  const rcnt={}; rr.forEach(r=>{const c=r.cause||'?'; rcnt[c]=(rcnt[c]||0)+1;});
+
+  // ── Filtre olayları grafikleri + yorum ───────────────────────────
+  const fe=res.filter_events||[];
+  const feCnt={};
+  fe.forEach(f=>{const cause=f.cause||'?'; feCnt[cause]=(feCnt[cause]||0)+1;});
+  $('ap_filtre_charts').innerHTML=
+    '<div class="card" style="margin-bottom:8px"><div class="ch">Filtre Olayları Dağılımı</div><div id="idc_filtre"></div></div>';
+  drawInlineDonut('idc_filtre',Object.fromEntries(Object.entries(feCnt).sort((a,b)=>b[1]-a[1]).slice(0,8)));
+  const topFe=Object.keys(feCnt).sort((a,b)=>feCnt[b]-feCnt[a])[0]||'?';
+  const pumpCount=feCnt['PUMP_RISK_SOFT']||0;
+  let feYorum='Toplam '+fe.length+' filtre olayı. Dominant: '+topFe+' ('+( feCnt[topFe]||0)+' kez).';
+  if(pumpCount>0) feYorum+=' Pump filtresi '+pumpCount+' kez tetiklendi (toplam adayların %'+
+    (nTrades>0?Math.round(pumpCount/(nTrades+fe.length)*100):0)+'\'i).';
+  $('ap_filtre_yorum').textContent=feYorum;
+  $('ap_filtre_w').innerHTML=tbl(fe);
+
+  // ── Ranking ──────────────────────────────────────────────────────
+  const rr=fe.filter(r=>String(r.cause||'').startsWith('RANK_'));
+  const rcnt={}; rr.forEach(r=>{const ca=r.cause||'?'; rcnt[ca]=(rcnt[ca]||0)+1;});
   const rsum=Object.keys(rcnt).sort((a,b)=>rcnt[b]-rcnt[a]).map(k=>({cause:k,count:rcnt[k]}));
   $('ap_rank_reason_w').innerHTML=tbl(rsum,['cause','count']);
+  const lblRows=[];Object.keys(labelCnt).forEach(l=>lblRows.push({label:l,count:labelCnt[l]}));
+  const LBLORDER=['ATTACK','STRONG','NORMAL','SCOUT','WEAK','?'];
+  lblRows.sort((a,b)=>LBLORDER.indexOf(a.label)-LBLORDER.indexOf(b.label));
+  drawBars($('rank_label_chart'),lblRows.map(r=>r.label),lblRows.map(r=>r.count),{h:140});
   let lastTs=rr.length?rr[rr.length-1].ts:'';
   let latest=rr.filter(r=>r.ts===lastTs).slice(-50);
   $('ap_rank_latest_w').innerHTML=tbl(latest,['ts','symbol','cause','rank','side','score','quality_score','label','boa_adj','selected_min_rank_score']);
-  // ghost
-  $('ap_ghost_w').innerHTML=tbl(res.ghost);
-  // President — V8.5.8: artık gerçekten okunuyor (önceden TODO idi)
-  $('ap_pres_dec_w').innerHTML=tbl(res.president_decisions,['Tarih','DecisionID','Sembol','Action','Side','Score','Label','SizeMult','SL_Pct','Reason','Shadow']);
-  $('ap_pres_votes_w').innerHTML=tbl(res.president_votes,['Tarih','Sembol','Dal','Action','Side','Score','Confidence','Shadow','Reason']);
-  $('ap_pres_explain_w').innerHTML=buildExplainCards(res.trades||[]);
+
+  // ── Ghost ────────────────────────────────────────────────────────
+  const ghosts=res.ghost||[];
+  let ghostYorum=ghosts.length>0?ghosts.length+' ghost sinyal. ':'Ghost verisi yok.';
+  const ghostWins=ghosts.filter(g=>parseFloat(g.Hipotetik_PnL||0)>0).length;
+  if(ghosts.length>0) ghostYorum+='%'+Math.round(ghostWins/ghosts.length*100)+' hipotetik kazanç oranı.';
+  $('ap_ghost_yorum').textContent=ghostYorum;
+  $('ap_ghost_w').innerHTML=tbl(ghosts);
+
+  // ── President — Kararlar + Dal Oyları grafikleri + yorum ─────────
+  const pDecs=res.president_decisions||[];
+  const pVotes=res.president_votes||[];
+  const actionCnt={OPEN:0,BLOCK:0,SHADOW:0};
+  pDecs.forEach(d=>{const a=d.Action||d.action||'?'; actionCnt[a]=(actionCnt[a]||0)+1;});
+  const branchCnt={};
+  pVotes.forEach(v=>{const b=v.Dal||v.branch||'?'; branchCnt[b]=(branchCnt[b]||0)+1;});
+  $('ap_pres_charts').innerHTML=
+    '<div class="grid g2" style="margin-bottom:8px">'+
+      '<div class="card"><div class="ch">Karar Dağılımı</div><div id="idc_pres_action"></div></div>'+
+      '<div class="card"><div class="ch">Dal Katılımı</div><div id="idc_pres_branch"></div></div>'+
+    '</div>';
+  drawInlineDonut('idc_pres_action',Object.fromEntries(Object.entries(actionCnt).filter(([,v])=>v>0)));
+  drawInlineDonut('idc_pres_branch',Object.fromEntries(Object.entries(branchCnt).filter(([,v])=>v>0)));
+  const coreCount=branchCnt['core_long']||0;
+  const coreOnlyPct=coreCount>0&&actionCnt.OPEN>0?Math.round((actionCnt.OPEN-(Object.values(branchCnt).filter((_,i)=>Object.keys(branchCnt)[i]!=='core_long').reduce((a,v)=>a+v,0)))/actionCnt.OPEN*100):0;
+  let presYorum=pDecs.length>0?pDecs.length+' karar: '+actionCnt.OPEN+' OPEN, '+actionCnt.BLOCK+' BLOCK.':'President kararı yok.';
+  if(coreOnlyPct>80) presYorum+=' Açılan kararların büyük çoğunluğu Core Long tek başına — Cascade Hunter katılımı düşük; shadow\'dan çıkarılması veya eşik düşürülmesi değerlendirilebilir.';
+  $('ap_pres_yorum').textContent=presYorum;
+  $('ap_pres_dec_w').innerHTML=tbl(pDecs,['Tarih','DecisionID','Sembol','Action','Side','Score','Label','SizeMult','SL_Pct','Reason','Shadow']);
+  $('ap_pres_votes_w').innerHTML=tbl(pVotes,['Tarih','Sembol','Dal','Action','Side','Score','Confidence','Shadow','Reason']);
+  $('ap_pres_explain_w').innerHTML=buildExplainCards(trades);
 
   // del + folder
   $('ap_folder').onclick=async()=>{
@@ -1135,7 +1260,7 @@ async function loadAnalysis(mode,folder){
     await call('open_folder',_apMode,folder.split(/[\\/]/).pop());
   };
   $('ap_del').onclick=async()=>{
-    if(_apSegment) return; // segment'ler ayrı silinmez, parent koşu silinince gider
+    if(_apSegment) return;
     if(!confirm(folder+' silinsin mi?'))return;
     const fn=folder.split(/[\\/]/).pop();
     if(_apMode==='bt') await call('delete_backtest',fn);
