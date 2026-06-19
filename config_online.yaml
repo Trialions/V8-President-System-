@@ -153,7 +153,14 @@ misc:
   slippage_pct: 0.03
 president:
   enabled: true
-  shadow_mode: true
+  # V8.5.9 FIX: bu statik değer 'true' idi ve backtest.president_execution_mode
+  # (simulated_active = canlı gibi çalış) ile ÇELİŞİYORDU. Tekli backtest
+  # (CLI override sayesinde) doğru çalışıyordu ama walk_forward.py /
+  # robustness_test.py / true_walk_forward.py bu override'a hiç sahip
+  # olmadığından (artık var — bkz. backtest.py: resolve_president_execution_mode)
+  # her segmentte sessizce 0 trade üretiyordu. Artık statik varsayılan da
+  # backtest.president_execution_mode ile uyumlu: false.
+  shadow_mode: false
   min_votes_to_open: 1
   consensus_bonus: 5.0
   portfolio:
@@ -393,7 +400,10 @@ execution:
   real_orders_enabled: false
 score_integrity:
   enabled: true
-  model: v8.5.3_ema_atr_momentum
+  # V8.5.9 FIX: önceden 'v8.5.3_ema_atr_momentum' yazıyordu ama strategy_core.py
+  # Supertrend ±20 bonus mantığı kullanıyor. Config ile kod uyuşmuyordu; bu denetim
+  # açısından yanıltıcıydı. Gerçek isimle güncellendi.
+  model: v8_supertrend_bonus
   max_pct_trades_above_97: 0.8
   max_single_label_pct: 0.9
   min_distinct_labels: 2
