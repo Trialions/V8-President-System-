@@ -425,6 +425,23 @@ class Backtester:
                 self._record_block(ts_ms, sym, "DAILY_TRADE_LIMIT", price, regime, score)
             return None
 
+        # V8.5.9 FIX: Günlük hedef/kayıp kapısı — engine.py'deki
+        # _daily_target_hit() / _daily_loss_hit() ile parity.
+        # Önceden backtest'te bu kapı yoktu: live'da gün içi limit dolunca
+        # işlem duruyordu ama backtest'te durmuyordu → PnL olduğundan iyi görünüyordu.
+        equity_now = self.equity + self._pnl_running
+        day_pnl    = self._daily_pnl.get(date_str, 0.0)
+        if self.daily_target > 0 and day_pnl >= equity_now * self.daily_target:
+            self._log_filter("DAILY_TARGET_HIT", sym, score, ts_str,
+                             extra={"day_pnl": round(day_pnl, 2)})
+            return None
+        if self.daily_loss_lim > 0 and day_pnl <= -(equity_now * self.daily_loss_lim):
+            self._log_filter("DAILY_LOSS_LIMIT", sym, score, ts_str,
+                             extra={"day_pnl": round(day_pnl, 2)})
+            if is_long_candidate:
+                self._record_block(ts_ms, sym, "DAILY_LOSS_LIMIT", price, regime, score)
+            return None
+
         adx_blocks = self.adx_filter_en and is_long_candidate and (
             (adx_val > 0 and adx_val < self.adx_thr) or
             (adx_val <= 0 and self.require_adx_strict)
@@ -795,6 +812,20 @@ class Backtester:
         if daily_trades >= self.max_trades_day:
             return
 
+        # V8.5.9 FIX: Günlük hedef/kayıp kapısı (_try_open legacy yolu için de parity).
+        equity_now = self.equity + self._pnl_running
+        day_pnl    = self._daily_pnl.get(date_str, 0.0)
+        if self.daily_target > 0 and day_pnl >= equity_now * self.daily_target:
+            self._log_filter("DAILY_TARGET_HIT", sym, score, ts_str,
+                             extra={"day_pnl": round(day_pnl, 2)})
+            return
+        if self.daily_loss_lim > 0 and day_pnl <= -(equity_now * self.daily_loss_lim):
+            self._log_filter("DAILY_LOSS_LIMIT", sym, score, ts_str,
+                             extra={"day_pnl": round(day_pnl, 2)})
+            if is_candidate:
+                self._record_block(ts_ms, sym, "DAILY_LOSS_LIMIT", price, regime, score)
+            return
+
         # ADX filtresi (BOA adayi)
         # require_adx_strict=False (varsayılan): ADX=0 (hesaplanamadı) ise bypass
         # require_adx_strict=True: ADX=0 da bloklanır (strict mod)
@@ -1138,6 +1169,7 @@ class Backtester:
                 "CoreScore": pos.get("branch_scores",{}).get("core_long",""),
                 "ShortScore": pos.get("branch_scores",{}).get("short_surgeon",""),
                 "CascadeScore": pos.get("branch_scores",{}).get("cascade_hunter",""),
+                "QualityScore": (pos.get("quality_score_report", {}) or {}).get("score", ""),
             })
             if self.runtime:
                 self.runtime.on_close(sym, pos["side"], total, candle_ts=(last_candle_ts/1000 if last_candle_ts else 0.0))
@@ -1605,16 +1637,22 @@ class Backtester:
                 w.writeheader(); w.writerows(rows)
 
 
-
 # ─── CLI Giris Noktasi ────────────────────────────────────────────────────────
-
 def resolve_president_execution_mode(cfg: dict, cli_pmode: str = "") -> tuple:
     """
     V8.5.9 FIX: Bu mantık önceden SADECE backtest.py'nin CLI __main__ blogunda
     vardı. walk_forward.py / robustness_test.py / true_walk_forward.py
     Backtester'ı doğrudan Python içinde instantiate ettiği için bu override
     HİÇ uygulanmıyordu — config_online.yaml'daki statik president.shadow_mode
-    değeri olduğu gibi kullanılıyordu.
+    değeri (ne olursa olsun) olduğu gibi kullanılıyordu. Bu yüzden
+    president.shadow_mode: true iken WF/ROB/TWF'nin HER segmenti sessizce
+    Action.SHADOW'a düşüyor, hiç trade açmıyordu (Toplam_Islem=0) — ama tekli
+    backtest (subprocess+CLI üzerinden bu fonksiyonun eski hali çalıştığı
+    için) normal çalışıyordu. Artık 4 script de AYNI fonksiyonu çağırıyor.
+
+    Öncelik: CLI argümanı (cli_pmode) > config.backtest.president_execution_mode.
+    cfg["president"]["shadow_mode"] İÇİNDE MUTATE EDİLİR (çağıran cfg dict'i
+    elinde tutar). Dönüş: (president_enabled: bool, resolved_pmode: str)
     """
     president_enabled = True
     pmode = str(cli_pmode or "")
@@ -1634,6 +1672,7 @@ def resolve_president_execution_mode(cfg: dict, cli_pmode: str = "") -> tuple:
     elif pmode == "legacy":
         president_enabled = False
     return president_enabled, pmode
+
 
 def main():
     parser = argparse.ArgumentParser(description="TRBOT V8 Backtest")
@@ -1658,22 +1697,6 @@ def main():
     # Bu, dokümantasyonda (HYBRID_CONFIG_NOTES.md) bahsedilen ama önceden hiç
     # okunmayan alanı gerçek bir etkiye kavuşturur — CLI hâlâ her zaman üstün.
     president_enabled, pmode = resolve_president_execution_mode(cfg, args.president_mode)
-    pmode = args.president_mode
-    if not pmode:
-        _default_mode = str(cfg.get("backtest", {}).get("president_execution_mode", ""))
-        if _default_mode == "shadow":
-            pmode = "shadow"
-        elif _default_mode in ("simulated_active", "live", "active"):
-            pmode = "live"
-        elif _default_mode == "legacy":
-            pmode = "legacy"
-
-    if pmode == "shadow":
-        cfg.setdefault("president", {})["shadow_mode"] = True
-    elif pmode == "live":
-        cfg.setdefault("president", {})["shadow_mode"] = False
-    elif pmode == "legacy":
-        president_enabled = False
 
     # Tarih hesapla
     if args.start and args.end:
