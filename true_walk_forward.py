@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List
 
-from backtest import Backtester, _fetch_candles, _load_symbols, _load_cfg
+from backtest import Backtester, _fetch_candles, _load_symbols, _load_cfg, resolve_president_execution_mode
 from weekly_symbol_universe import select_universe_for_window, write_universe_history
 
 
