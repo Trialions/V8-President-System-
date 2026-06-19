@@ -416,8 +416,8 @@ class TradeEngine:
                 partial_qty = pos["qty"] * float(pos.get("tp1_close_pct", self.tp1_close_pct))
                 gross = self._gross_pnl(pos["side"], pos["entry"], price, partial_qty)
                 pnl   = gross - self._fee_cost(price, partial_qty)
-                self.pnl_total_usd += pnl
-                self.daily_pnl_usd += pnl
+                # V8.5.9 FIX: running toplama EKLEME — _close'daki total_net hesabı
+                # pos["tp1_pnl"]'i dahil ettiği için burada eklersek çifte sayılırdı.
                 pos["qty"] -= partial_qty
                 pos["tp1_done"] = True
                 pos["tp1_pnl"]  = round(pnl, 4)
@@ -444,8 +444,8 @@ class TradeEngine:
                 reduce_qty = pos["qty"] * max(0.0, min(0.95, self.tp1_prog_reduce_pct))
                 gross = self._gross_pnl(pos["side"], pos["entry"], price, reduce_qty)
                 pnl   = gross - self._fee_cost(price, reduce_qty)
-                self.pnl_total_usd += pnl
-                self.daily_pnl_usd += pnl
+                # V8.5.9 FIX: running toplama EKLEME — _close'daki total_net hesabı
+                # pos["tp1_progress_pnl"]'i dahil ettiği için çifte sayılırdı.
                 pos["qty"] -= reduce_qty
                 pos["tp1_progress_reduced"] = True
                 pos["tp1_progress_pnl"] = round(pos.get("tp1_progress_pnl", 0.0) + pnl, 4)
@@ -778,8 +778,13 @@ class TradeEngine:
         # Risk Governor / Symbol Manager GERÇEK TOPLAMI görmeli: TP1 + TP1_Progress +
         # bu kapanış parçası − giriş komisyonu (backtest.py'deki total_net ile parite)
         total_net  = pnl_usd + pos.get("tp1_pnl", 0.0) + pos.get("tp1_progress_pnl", 0.0) - entry_cost
-        self.pnl_total_usd += pnl_usd
-        self.daily_pnl_usd += pnl_usd
+        # V8.5.9 FIX: önceden pnl_usd kullanılıyordu — TP1 PnL (satır 419/447'de ara olarak
+        # eklendiği için çifte sayılıyordu) ve giriş komisyonu eksikti. Şimdi her iki running
+        # toplam da total_net şemasına çekildi; TP1 ara eklemeleri (satır 419/447) artık
+        # sadece pos["tp1_pnl"] / pos["tp1_progress_pnl"]'e yazılıyor, running toplama DEĞİL.
+        # Bu, backtest.py'deki _pnl_running + _daily_pnl şemasıyla tam parity sağlar.
+        self.pnl_total_usd += total_net
+        self.daily_pnl_usd += total_net
         self.sym_mgr.record_trade(symbol, total_net)
         self.sym_mgr.update_equity(self.equity + self.pnl_total_usd)
         candle_ts_c = float(self.last_close_time.get(symbol, 0)) / 1000 if self.last_close_time.get(symbol, 0) else time.time()
