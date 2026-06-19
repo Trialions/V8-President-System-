@@ -96,14 +96,20 @@ class RiskGovernor:
 
     # ── Kalıcılık ─────────────────────────────────────────────────────
     def _save(self):
+        # V8.5.9 FIX: önceden lock dışında çağrılıyordu; çok iş parçacıklı
+        # ortamda eş zamanlı yazma yarış koşuluna yol açabilirdi. Veriyi lock
+        # içinde kopyala, dosyayı lock dışında yaz (I/O'yu lock içinde tutmak
+        # diğer metodları gereksiz yere bloklar).
         if not self._persist_path: return
         try:
+            with self._lock:
+                data = {"daily_pnl": self._daily_pnl, "monthly_pnl": self._monthly_pnl,
+                        "equity": self._equity, "open_longs": self._open_longs,
+                        "open_shorts": self._open_shorts, "last_day": self._last_day,
+                        "last_month": self._last_month}
             os.makedirs(os.path.dirname(os.path.abspath(self._persist_path)), exist_ok=True)
             with open(self._persist_path, "w", encoding="utf-8") as f:
-                json.dump({"daily_pnl": self._daily_pnl, "monthly_pnl": self._monthly_pnl,
-                    "equity": self._equity, "open_longs": self._open_longs,
-                    "open_shorts": self._open_shorts, "last_day": self._last_day,
-                    "last_month": self._last_month}, f)
+                json.dump(data, f)
         except Exception: pass
 
     def _load(self):
@@ -111,11 +117,12 @@ class RiskGovernor:
         try:
             with open(self._persist_path, encoding="utf-8") as f:
                 d = json.load(f)
-            self._daily_pnl   = d.get("daily_pnl", 0.0)
-            self._monthly_pnl = d.get("monthly_pnl", 0.0)
-            self._equity      = d.get("equity", self._equity)
-            self._open_longs  = d.get("open_longs", 0)
-            self._open_shorts = d.get("open_shorts", 0)
-            self._last_day    = d.get("last_day", "")
-            self._last_month  = d.get("last_month", "")
+            with self._lock:
+                self._daily_pnl   = d.get("daily_pnl", 0.0)
+                self._monthly_pnl = d.get("monthly_pnl", 0.0)
+                self._equity      = d.get("equity", self._equity)
+                self._open_longs  = d.get("open_longs", 0)
+                self._open_shorts = d.get("open_shorts", 0)
+                self._last_day    = d.get("last_day", "")
+                self._last_month  = d.get("last_month", "")
         except Exception: pass
