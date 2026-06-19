@@ -12,7 +12,7 @@ from typing import List
 
 import yaml
 
-from backtest import Backtester, _fetch_candles, _load_symbols
+from backtest import Backtester, _fetch_candles, _load_symbols, _load_cfg, resolve_president_execution_mode
 from weekly_symbol_universe import select_universe_for_window, write_universe_history
 
 
@@ -120,7 +120,6 @@ def main():
     parser.add_argument("--top",      type=int, default=20)
     parser.add_argument("--out",      default="robustness_results/latest")
     parser.add_argument("--config",   default="config_online.yaml")
-    resolve_president_execution_mode(cfg)
     args = parser.parse_args()
 
     cfg = _load_cfg(args.config)
